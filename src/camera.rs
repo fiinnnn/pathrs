@@ -12,12 +12,12 @@ pub struct Camera {
 impl Camera {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
-            uniforms: CameraUniforms { width, height }
+            uniforms: CameraUniforms { width, height },
         }
     }
 
     pub fn input(&mut self, event: &sdl2::event::Event) -> bool {
-       false 
+        false
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {

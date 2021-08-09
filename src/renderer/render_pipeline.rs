@@ -5,32 +5,30 @@ pub struct RenderPipeline {
 
 impl RenderPipeline {
     pub fn new(device: &wgpu::Device, sc_desc: &wgpu::SwapChainDescriptor) -> Self {
-        let shader_module =
-            device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-                label: Some("Quad shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/quad.wgsl").into()),
-                flags: wgpu::ShaderFlags::all(),
-            });
+        let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("Quad shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/quad.wgsl").into()),
+            flags: wgpu::ShaderFlags::all(),
+        });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Render bind group layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::StorageTexture {
-                        access: wgpu::StorageTextureAccess::ReadOnly,
-                        format: wgpu::TextureFormat::Rgba32Float,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                    },
-                    count: None,
-                }],
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStage::FRAGMENT,
+                ty: wgpu::BindingType::StorageTexture {
+                    access: wgpu::StorageTextureAccess::ReadOnly,
+                    format: wgpu::TextureFormat::Rgba32Float,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                },
+                count: None,
+            }],
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render pipeline layout"),
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[]
+            push_constant_ranges: &[],
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -69,7 +67,7 @@ impl RenderPipeline {
 
         Self {
             pipeline,
-            bind_group_layout
+            bind_group_layout,
         }
     }
 }

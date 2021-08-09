@@ -1,8 +1,8 @@
 use futures::executor::block_on;
 
 mod application;
-mod renderer;
 mod camera;
+mod renderer;
 
 use application::Application;
 

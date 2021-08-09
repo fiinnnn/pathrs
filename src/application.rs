@@ -3,8 +3,8 @@ use sdl2::{
     keyboard::Keycode,
 };
 
-use crate::renderer::Renderer;
 use crate::camera::Camera;
+use crate::renderer::Renderer;
 
 struct SDLBackend {
     context: sdl2::Sdl,
@@ -146,7 +146,8 @@ impl Application {
             .device
             .create_swap_chain(&self.wgpu_backend.surface, &self.wgpu_backend.sc_desc);
 
-        self.renderer.resize(&self.wgpu_backend.device, width, height);
+        self.renderer
+            .resize(&self.wgpu_backend.device, width, height);
 
         self.camera.resize(width, height);
 
@@ -154,7 +155,16 @@ impl Application {
     }
 
     fn render(&mut self) {
-        let frame = self.wgpu_backend.swap_chain.get_current_frame().expect("Unable to get current frame");
-        self.renderer.render(&self.wgpu_backend.device, &frame, &self.wgpu_backend.queue, &self.camera);
+        let frame = self
+            .wgpu_backend
+            .swap_chain
+            .get_current_frame()
+            .expect("Unable to get current frame");
+        self.renderer.render(
+            &self.wgpu_backend.device,
+            &frame,
+            &self.wgpu_backend.queue,
+            &self.camera,
+        );
     }
 }

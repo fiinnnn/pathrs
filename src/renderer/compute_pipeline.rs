@@ -5,12 +5,11 @@ pub struct ComputePipeline {
 
 impl ComputePipeline {
     pub fn new(device: &wgpu::Device) -> Self {
-        let shader_module =
-            device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-                label: Some("Compute shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/compute.wgsl").into()),
-                flags: wgpu::ShaderFlags::all(),
-            });
+        let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("Compute shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/compute.wgsl").into()),
+            flags: wgpu::ShaderFlags::all(),
+        });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Compute bind group layout"),
@@ -33,10 +32,10 @@ impl ComputePipeline {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
                     count: None,
-                }
+                },
             ],
         });
 
