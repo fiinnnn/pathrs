@@ -1,5 +1,5 @@
 [[group(0), binding(0)]]
-var t_output: [[access(write)]] texture_storage_2d<rgba32float>;
+var t_output: texture_storage_2d<rgba32float, write>;
 
 [[block]]
 struct CameraUniforms {

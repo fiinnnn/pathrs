@@ -1,45 +1,21 @@
-use sdl2::{
-    event::{Event, WindowEvent},
-    keyboard::Keycode,
-};
+use futures::executor::block_on;
+use game_loop::game_loop;
+use winit::window::Window;
 
 use crate::camera::Camera;
 use crate::renderer::Renderer;
 
-struct SDLBackend {
-    context: sdl2::Sdl,
-    window: sdl2::video::Window,
-}
-
-impl SDLBackend {
-    fn init(title: &str, width: u32, height: u32) -> Self {
-        let context = sdl2::init().unwrap();
-
-        let video = context.video().unwrap();
-
-        let window = video
-            .window(title, width, height)
-            .position_centered()
-            .resizable()
-            .build()
-            .unwrap();
-
-        Self { context, window }
-    }
-}
-
 struct WGPUBackend {
     surface: wgpu::Surface,
-    adapter: wgpu::Adapter,
+    surface_config: wgpu::SurfaceConfiguration,
+    _adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    sc_desc: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
 }
 
 impl WGPUBackend {
-    async fn init(window: &sdl2::video::Window) -> Self {
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+    async fn init(window: &Window) -> Self {
+        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
 
         let surface = unsafe { instance.create_surface(window) };
 
@@ -54,7 +30,7 @@ impl WGPUBackend {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
+                    features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                     limits: wgpu::Limits::default(),
                     label: None,
                 },
@@ -63,88 +39,59 @@ impl WGPUBackend {
             .await
             .unwrap();
 
-        let window_size = window.size();
-        let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: window_size.0,
-            height: window_size.1,
+        let window_size = window.inner_size();
+
+        let surface_config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: surface.get_preferred_format(&adapter).unwrap(),
+            width: window_size.width,
+            height: window_size.height,
             present_mode: wgpu::PresentMode::Mailbox,
         };
 
-        let swap_chain = device.create_swap_chain(&surface, &sc_desc);
+        surface.configure(&device, &surface_config);
 
         Self {
             surface,
-            adapter,
+            surface_config,
+            _adapter: adapter,
             device,
             queue,
-            sc_desc,
-            swap_chain,
         }
     }
 }
 
 pub struct Application {
-    sdl_backend: SDLBackend,
     wgpu_backend: WGPUBackend,
     renderer: Renderer,
     camera: Camera,
 }
 
 impl Application {
-    pub async fn new(title: &str, width: u32, height: u32) -> Self {
-        let sdl_backend = SDLBackend::init(title, width, height);
-        let wgpu_backend = WGPUBackend::init(&sdl_backend.window).await;
-        let renderer = Renderer::new(&wgpu_backend.device, &wgpu_backend.sc_desc, width, height);
-        let camera = Camera::new(width, height);
+    pub async fn new(window: &Window) -> Self {
+        let wgpu_backend = WGPUBackend::init(window).await;
+        let window_size = window.inner_size();
+        let renderer = Renderer::new(
+            &wgpu_backend.device,
+            &wgpu_backend.surface_config,
+            window_size.width,
+            window_size.height,
+        );
+        let camera = Camera::new(window_size.width, window_size.height);
 
         Self {
-            sdl_backend,
             wgpu_backend,
             renderer,
             camera,
         }
     }
 
-    pub fn run(&mut self) {
-        let mut event_pump = self.sdl_backend.context.event_pump().unwrap();
-
-        let mut running = true;
-        while running {
-            for event in event_pump.poll_iter() {
-                match self.camera.input(&event) {
-                    true => continue,
-                    _ => {}
-                }
-
-                match event {
-                    Event::Quit { .. } => running = false,
-                    Event::KeyUp {
-                        keycode: Some(Keycode::Escape),
-                        ..
-                    } => running = false,
-                    Event::Window {
-                        win_event: WindowEvent::Resized(width, height),
-                        ..
-                    } => {
-                        self.resize(width as u32, height as u32);
-                    }
-                    _ => {}
-                }
-            }
-
-            self.render();
-        }
-    }
-
     fn resize(&mut self, width: u32, height: u32) {
-        self.wgpu_backend.sc_desc.width = width;
-        self.wgpu_backend.sc_desc.height = height;
-        self.wgpu_backend.swap_chain = self
-            .wgpu_backend
-            .device
-            .create_swap_chain(&self.wgpu_backend.surface, &self.wgpu_backend.sc_desc);
+        self.wgpu_backend.surface_config.width = width;
+        self.wgpu_backend.surface_config.height = height;
+        self.wgpu_backend
+            .surface
+            .configure(&self.wgpu_backend.device, &self.wgpu_backend.surface_config);
 
         self.renderer
             .resize(&self.wgpu_backend.device, width, height);
@@ -154,10 +101,28 @@ impl Application {
         self.render();
     }
 
+    fn handle_window_event(&mut self, event: &winit::event::WindowEvent) {
+        let mut handled = false;
+
+        match event {
+            winit::event::WindowEvent::Resized(size) => {
+                self.resize(size.width, size.height);
+                handled = true;
+            }
+            _ => (),
+        }
+
+        if handled {
+            return;
+        }
+
+        self.camera.input(event);
+    }
+
     fn render(&mut self) {
         let frame = self
             .wgpu_backend
-            .swap_chain
+            .surface
             .get_current_frame()
             .expect("Unable to get current frame");
         self.renderer.render(
@@ -167,4 +132,54 @@ impl Application {
             &self.camera,
         );
     }
+}
+
+pub fn run_app(title: &str, width: u32, height: u32) -> ! {
+    let event_loop = winit::event_loop::EventLoop::new();
+
+    let window = winit::window::WindowBuilder::new()
+        .with_decorations(true)
+        .with_resizable(true)
+        .with_transparent(false)
+        .with_title(title)
+        .with_inner_size(winit::dpi::PhysicalSize { width, height })
+        .build(&event_loop)
+        .unwrap();
+
+    let app = block_on(Application::new(&window));
+
+    game_loop(
+        event_loop,
+        window,
+        app,
+        60,
+        0.1,
+        |_g| {},
+        |g| g.game.render(),
+        |g, event| match event {
+            winit::event::Event::WindowEvent { event, .. } => {
+                let mut handled = false;
+                match event {
+                    winit::event::WindowEvent::CloseRequested
+                    | winit::event::WindowEvent::KeyboardInput {
+                        input:
+                            winit::event::KeyboardInput {
+                                state: winit::event::ElementState::Pressed,
+                                virtual_keycode: Some(winit::event::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => {
+                        g.exit();
+                        handled = true;
+                    }
+                    _ => (),
+                }
+                if !handled {
+                    g.game.handle_window_event(&event)
+                }
+            }
+            _ => (),
+        },
+    );
 }

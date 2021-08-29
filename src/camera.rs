@@ -16,7 +16,7 @@ impl Camera {
         }
     }
 
-    pub fn input(&mut self, event: &sdl2::event::Event) -> bool {
+    pub fn input(&mut self, event: &winit::event::WindowEvent) -> bool {
         false
     }
 

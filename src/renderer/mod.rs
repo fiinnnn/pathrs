@@ -17,19 +17,19 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(
         device: &wgpu::Device,
-        sc_desc: &wgpu::SwapChainDescriptor,
+        surface_config: &wgpu::SurfaceConfiguration,
         width: u32,
         height: u32,
     ) -> Self {
         let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Camera buffer"),
             size: 12,
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let compute_pipeline = ComputePipeline::new(&device);
-        let render_pipeline = RenderPipeline::new(&device, &sc_desc);
+        let render_pipeline = RenderPipeline::new(&device, &surface_config);
 
         let render_target_texture = create_render_target_texture(&device, width, height);
         let render_target =
@@ -56,7 +56,7 @@ impl Renderer {
     pub fn render(
         &mut self,
         device: &wgpu::Device,
-        frame: &wgpu::SwapChainFrame,
+        frame: &wgpu::SurfaceFrame,
         queue: &wgpu::Queue,
         camera: &Camera,
     ) {
@@ -107,10 +107,14 @@ impl Renderer {
         }
 
         {
+            let view = frame
+                .output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &frame.output.view,
+                    view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -141,6 +145,6 @@ fn create_render_target_texture(device: &wgpu::Device, width: u32, height: u32) 
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba32Float,
-        usage: wgpu::TextureUsage::STORAGE,
+        usage: wgpu::TextureUsages::STORAGE_BINDING,
     })
 }

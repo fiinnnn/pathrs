@@ -8,7 +8,6 @@ impl ComputePipeline {
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Compute shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/compute.wgsl").into()),
-            flags: wgpu::ShaderFlags::all(),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -17,7 +16,7 @@ impl ComputePipeline {
                 // render target
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::COMPUTE,
+                    visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::StorageTexture {
                         access: wgpu::StorageTextureAccess::WriteOnly,
                         view_dimension: wgpu::TextureViewDimension::D2,
@@ -28,7 +27,7 @@ impl ComputePipeline {
                 // camera
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStage::COMPUTE,
+                    visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
