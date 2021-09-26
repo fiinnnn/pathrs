@@ -12,11 +12,14 @@ pub struct Renderer {
     compute_pipeline: ComputePipeline,
     render_pipeline: RenderPipeline,
     render_target: wgpu::TextureView,
+    imgui_renderer: imgui_wgpu::Renderer,
 }
 
 impl Renderer {
     pub fn new(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        imgui_ctx: &mut imgui::Context,
         surface_config: &wgpu::SurfaceConfiguration,
         width: u32,
         height: u32,
@@ -35,6 +38,16 @@ impl Renderer {
         let render_target =
             render_target_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+        let imgui_renderer = imgui_wgpu::Renderer::new(
+            imgui_ctx,
+            &device,
+            &queue,
+            imgui_wgpu::RendererConfig {
+                texture_format: surface_config.format,
+                ..Default::default()
+            }
+        );
+
         Self {
             width,
             height,
@@ -42,6 +55,7 @@ impl Renderer {
             compute_pipeline,
             render_pipeline,
             render_target,
+            imgui_renderer,
         }
     }
 
@@ -57,9 +71,12 @@ impl Renderer {
         &mut self,
         device: &wgpu::Device,
         frame: &wgpu::SurfaceFrame,
+        imgui_frame: imgui::Ui,
         queue: &wgpu::Queue,
         camera: &Camera,
     ) {
+        puffin::profile_function!();
+
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
@@ -98,6 +115,8 @@ impl Renderer {
         });
 
         {
+            puffin::profile_scope!("compute pass");
+
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Compute pass"),
             });
@@ -107,6 +126,8 @@ impl Renderer {
         }
 
         {
+            puffin::profile_scope!("render pass");
+
             let view = frame
                 .output
                 .texture
@@ -127,6 +148,16 @@ impl Renderer {
             render_pass.set_pipeline(&self.render_pipeline.pipeline);
             render_pass.set_bind_group(0, &render_bind_group, &[]);
             render_pass.draw(0..3, 0..1);
+
+            match self.imgui_renderer.render(
+                &imgui_frame.render(),
+                &queue,
+                &device,
+                &mut render_pass
+            ) {
+                Err(e) => log::error!("imgui render failed: {}", e),
+                _ => ()
+            };
         }
 
         queue.submit(Some(encoder.finish()));
