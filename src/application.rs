@@ -83,19 +83,16 @@ impl Application {
         imgui_platform.attach_window(
             imgui_ctx.io_mut(),
             &window,
-            imgui_winit_support::HiDpiMode::Default,
+            imgui_winit_support::HiDpiMode::Locked(1.0),
         );
 
         imgui_ctx.set_ini_filename(None);
-
-        let font_size = (13.0 * window.scale_factor()) as f32;
-        imgui_ctx.io_mut().font_global_scale = (1.0 / window.scale_factor()) as f32;
 
         imgui_ctx.fonts().add_font(&[imgui::FontSource::DefaultFontData {
             config: Some(imgui::FontConfig {
                 oversample_h: 1,
                 pixel_snap_h: true,
-                size_pixels: font_size,
+                size_pixels: 13.0,
                 ..Default::default()
             }),
         }]);
