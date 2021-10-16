@@ -187,8 +187,9 @@ impl Application {
 
         let imgui_frame = self.imgui_ctx.frame();
 
-
         self.puffin_profiler_ui.window(&imgui_frame);
+
+        self.camera.render_ui(&imgui_frame);
 
         self.renderer.render(
             &self.wgpu_backend.device,
