@@ -39,7 +39,7 @@ fn main([[builtin(workgroup_id)]] coord: vec3<u32>) {
     let origin = camera_uniforms.pos.xyz;
 
     let screen_pos = camera_uniforms.p0 + camera_uniforms.p0p1 * (f32(coord.x) / camera_uniforms.width) 
-      + camera_uniforms.p0p2 * (f32(coord.y) / camera_uniforms.height);
+      + camera_uniforms.p0p2 * ((camera_uniforms.height - f32(coord.y)) / camera_uniforms.height);
 
     let dir = normalize(screen_pos.xyz - origin);
 

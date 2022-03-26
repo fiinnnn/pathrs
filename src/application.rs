@@ -175,7 +175,9 @@ impl Application {
         self.input.update(event);
     }
 
-    fn update(&mut self, window: &Window) {}
+    fn update(&mut self) {
+        self.camera.update(&self.input);
+    }
 
     fn render(&mut self, window: &Window) {
         puffin::profile_function!();
@@ -201,8 +203,6 @@ impl Application {
         let imgui_frame = self.imgui_ctx.frame();
 
         //self.puffin_profiler_ui.window(&imgui_frame);
-
-        self.camera.update();
 
         self.camera.render_ui(&imgui_frame);
 
@@ -239,7 +239,7 @@ pub fn run_app(title: &str, width: u32, height: u32) -> ! {
         60,
         0.1,
         |g| {
-            g.game.update(&g.window);
+            g.game.update();
         },
         |g| {
             g.game.render(&g.window);

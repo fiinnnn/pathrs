@@ -1,3 +1,4 @@
+use __core::f32::consts::PI;
 use glam::{Mat4, Vec3, Vec3Swizzles};
 use imgui::*;
 use winit::event::{KeyboardInput, VirtualKeyCode, WindowEvent};
@@ -45,56 +46,50 @@ impl Camera {
         }
     }
 
-    pub fn input(&mut self, event: &winit::event::WindowEvent) -> bool {
-        match event {
-            WindowEvent::KeyboardInput {
-                input: KeyboardInput {
-                    virtual_keycode, ..
-                },
-                ..
-            } => match virtual_keycode {
-                Some(VirtualKeyCode::W) => {
-                    self.position += self.forward * 0.01;
-                    true
-                }
-                Some(VirtualKeyCode::S) => {
-                    self.position -= self.forward * 0.01;
-                    true
-                }
-                Some(VirtualKeyCode::A) => {
-                    self.position -= self.right * 0.01;
-                    true
-                }
-                Some(VirtualKeyCode::D) => {
-                    self.position += self.right * 0.01;
-                    true
-                }
-                Some(VirtualKeyCode::R) => {
-                    self.position += Vec3::new(0.0, 0.01, 0.0);
-                    true
-                }
-                Some(VirtualKeyCode::F) => {
-                    self.position -= Vec3::new(0.0, 0.01, 0.0);
-                    true
-                }
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-
     pub fn resize(&mut self, width: u32, height: u32) {
         self.uniforms.width = width as f32;
         self.uniforms.height = height as f32;
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, input: &winit_input_helper::WinitInputHelper) {
+        self.input(input);
+
         let (forward, right, p0, p0p1, p0p2) = calc_vecs(self.position, self.rotation);
         self.forward = forward;
         self.right = right;
         self.uniforms.p0 = p0.xyzx().to_array();
         self.uniforms.p0p1 = p0p1.xyzx().to_array();
         self.uniforms.p0p2 = p0p2.xyzx().to_array();
+    }
+
+    pub fn input(&mut self, input: &winit_input_helper::WinitInputHelper) {
+        if input.key_held(VirtualKeyCode::W) {
+            self.position += self.forward * 0.01;
+        } else if input.key_held(VirtualKeyCode::S) {
+            self.position -= self.forward * 0.01;
+        }
+
+        if input.key_held(VirtualKeyCode::A) {
+            self.position -= self.right * 0.01;
+        } else if input.key_held(VirtualKeyCode::D) {
+            self.position += self.right * 0.01;
+        }
+
+        if input.key_held(VirtualKeyCode::R) {
+            self.position += Vec3::new(0.0, 0.01, 0.0);
+        } else if input.key_held(VirtualKeyCode::F) {
+            self.position -= Vec3::new(0.0, 0.01, 0.0);
+        }
+
+        // let (dx, dy) = input.mouse_diff();
+        // self.rotation.x += dy * 0.01;
+        // self.rotation.y -= dx * 0.01;
+
+        // if self.rotation.y > 2.0 * PI {
+        //     self.rotation.y = 0.0;
+        // } else if self.rotation.y < 0.0 {
+        //     self.rotation.y = 2.0 * PI;
+        // }
     }
 
     pub fn render_ui(&mut self, ui: &Ui) {
