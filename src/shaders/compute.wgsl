@@ -1,38 +1,49 @@
 [[group(0), binding(0)]]
 var t_output: texture_storage_2d<rgba32float, write>;
 
-[[block]]
 struct CameraUniforms {
-    width: u32;
-    height: u32;
+    pos: vec4<f32>;
+    p0: vec4<f32>;
+    p0p1: vec4<f32>;
+    p0p2: vec4<f32>;
+    width: f32;
+    height: f32;
 };
 
 [[group(0), binding(1)]]
 var<uniform> camera_uniforms: CameraUniforms;
 
-fn intersect_sphere(o: vec3<f32>, d: vec3<f32>) -> bool {
-    let sp = vec3<f32>(0.0, 0.0, -5.0);
-    let sr = 1.0;
-    let m = o - sp;
-    let b = dot(m, d);
-    let c = dot(m, m) - sr * sr;
+fn intersect_triangle(o: vec3<f32>, d: vec3<f32>) -> f32 {
+    let v0 = vec3<f32>(0.0, 1.0, -1.0);
+    let v1 = vec3<f32>(-1.0, -0.5, -1.0);
+    let v2 = vec3<f32>(1.0, -0.5, -1.0);
 
-    if (c > 0.0 && b > 0.0) { return false; }
+    let e1 = v1 - v0;
+    let e2 = v2 - v0;
+    let T = o - v0;
+    let p = cross(d, e2);
+    let f = dot(p, e1);
 
-    let d = b * b - c;
+    let u = dot(p, T) / f;
+    if (u < -0.0001 || u > 1.0) { return 100.0; }
 
-    return (d >= 0.0);
+    let q = cross(T, e1);
+    let v = dot(q, d) / f;
+    if (v < -0.0001 || u+v > 1.0) { return 100.0; }
+
+    return dot(q, e2) / f;
 }
 
 [[stage(compute), workgroup_size(1)]]
 fn main([[builtin(workgroup_id)]] coord: vec3<u32>) {
-    let ar = f32(camera_uniforms.width) / f32(camera_uniforms.height);
-    let dir = normalize(vec3<f32>((-1.0 + (f32(coord.x)/(f32(camera_uniforms.width)/2.0))) * ar, -1.0 + (f32(coord.y)/(f32(camera_uniforms.height)/2.0)), -1.0));
-    let origin = vec3<f32>(0.0, 0.0, 0.0);
+    let origin = camera_uniforms.pos.xyz;
 
-    var col = vec3<f32>(0.0, 0.0, 0.0);
-    if (intersect_sphere(origin, dir)) {
-        col = vec3<f32>(1.0, 1.0, 1.0);
-    }
+    let screen_pos = camera_uniforms.p0 + camera_uniforms.p0p1 * (f32(coord.x) / camera_uniforms.width) 
+      + camera_uniforms.p0p2 * (f32(coord.y) / camera_uniforms.height);
+
+    let dir = normalize(screen_pos.xyz - origin);
+
+    var col = vec3<f32>(1.0 - intersect_triangle(origin, dir) / 4.0);
+
     textureStore(t_output, vec2<i32>(coord.xy), vec4<f32>(col, 1.0));
 }

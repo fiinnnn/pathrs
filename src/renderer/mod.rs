@@ -25,8 +25,9 @@ impl Renderer {
         height: u32,
     ) -> Self {
         let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            //TODO; move to camera
             label: Some("Camera buffer"),
-            size: 12,
+            size: 80,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -45,7 +46,7 @@ impl Renderer {
             imgui_wgpu::RendererConfig {
                 texture_format: surface_config.format,
                 ..Default::default()
-            }
+            },
         );
 
         Self {
@@ -70,7 +71,7 @@ impl Renderer {
     pub fn render(
         &mut self,
         device: &wgpu::Device,
-        frame: &wgpu::SurfaceFrame,
+        texture: &wgpu::SurfaceTexture,
         imgui_frame: imgui::Ui,
         queue: &wgpu::Queue,
         camera: &Camera,
@@ -96,11 +97,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &self.camera_buffer,
-                        offset: 0,
-                        size: None,
-                    }),
+                    resource: self.camera_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -128,8 +125,7 @@ impl Renderer {
         {
             puffin::profile_scope!("render pass");
 
-            let view = frame
-                .output
+            let view = texture
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -153,10 +149,10 @@ impl Renderer {
                 &imgui_frame.render(),
                 &queue,
                 &device,
-                &mut render_pass
+                &mut render_pass,
             ) {
                 Err(e) => log::error!("imgui render failed: {}", e),
-                _ => ()
+                _ => (),
             };
         }
 

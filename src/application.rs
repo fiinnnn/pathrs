@@ -2,7 +2,9 @@ use std::time::Instant;
 
 use futures::executor::block_on;
 use game_loop::game_loop;
+use glam::Vec3;
 use winit::window::Window;
+use winit_input_helper::WinitInputHelper;
 
 use crate::camera::Camera;
 use crate::renderer::Renderer;
@@ -25,6 +27,7 @@ impl WGPUBackend {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
+                ..Default::default()
             })
             .await
             .unwrap();
@@ -65,6 +68,7 @@ impl WGPUBackend {
 
 pub struct Application {
     wgpu_backend: WGPUBackend,
+    input: WinitInputHelper,
     imgui_ctx: imgui::Context,
     imgui_platform: imgui_winit_support::WinitPlatform,
     renderer: Renderer,
@@ -78,6 +82,8 @@ impl Application {
         let wgpu_backend = WGPUBackend::init(window).await;
         let window_size = window.inner_size();
 
+        let input = WinitInputHelper::new();
+
         let mut imgui_ctx = imgui::Context::create();
         let mut imgui_platform = imgui_winit_support::WinitPlatform::init(&mut imgui_ctx);
         imgui_platform.attach_window(
@@ -88,14 +94,16 @@ impl Application {
 
         imgui_ctx.set_ini_filename(None);
 
-        imgui_ctx.fonts().add_font(&[imgui::FontSource::DefaultFontData {
-            config: Some(imgui::FontConfig {
-                oversample_h: 1,
-                pixel_snap_h: true,
-                size_pixels: 13.0,
-                ..Default::default()
-            }),
-        }]);
+        imgui_ctx
+            .fonts()
+            .add_font(&[imgui::FontSource::DefaultFontData {
+                config: Some(imgui::FontConfig {
+                    oversample_h: 1,
+                    pixel_snap_h: true,
+                    size_pixels: 13.0,
+                    ..Default::default()
+                }),
+            }]);
 
         let renderer = Renderer::new(
             &wgpu_backend.device,
@@ -105,7 +113,12 @@ impl Application {
             window_size.width,
             window_size.height,
         );
-        let camera = Camera::new(window_size.width, window_size.height);
+        let camera = Camera::new(
+            window_size.width,
+            window_size.height,
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, 0.0),
+        );
 
         let puffin_profiler_ui = puffin_imgui::ProfilerUi::default();
 
@@ -113,6 +126,7 @@ impl Application {
 
         Self {
             wgpu_backend,
+            input,
             imgui_ctx,
             imgui_platform,
             renderer,
@@ -122,7 +136,7 @@ impl Application {
         }
     }
 
-    fn resize(&mut self, window: &winit::window::Window, width: u32, height: u32) {
+    fn resize(&mut self, window: &Window, width: u32, height: u32) {
         self.wgpu_backend.surface_config.width = width;
         self.wgpu_backend.surface_config.height = height;
         self.wgpu_backend
@@ -137,30 +151,33 @@ impl Application {
         self.render(window);
     }
 
-    fn handle_event(&mut self, event: &winit::event::Event<()>, window: &winit::window::Window) {
+    fn handle_event<T>(&mut self, event: &winit::event::Event<T>, window: &Window) {
         let mut handled = false;
 
-        self.imgui_platform.handle_event(self.imgui_ctx.io_mut(), window, event);
+        self.imgui_platform
+            .handle_event(self.imgui_ctx.io_mut(), window, event);
 
         match event {
-            winit::event::Event::WindowEvent { event, .. } => {
-                match event {
-                    winit::event::WindowEvent::Resized(size) => {
-                        self.resize(window, size.width, size.height);
-                        handled = true;
-                    },
-                    _ => (),
+            winit::event::Event::WindowEvent { event, .. } => match event {
+                winit::event::WindowEvent::Resized(size) => {
+                    self.resize(window, size.width, size.height);
+                    handled = true;
                 }
-            }
+                _ => (),
+            },
             _ => (),
         }
 
         if handled {
             return;
         }
+
+        self.input.update(event);
     }
 
-    fn render(&mut self, window: &winit::window::Window) {
+    fn update(&mut self, window: &Window) {}
+
+    fn render(&mut self, window: &Window) {
         puffin::profile_function!();
 
         let now = Instant::now();
@@ -169,14 +186,10 @@ impl Application {
 
         self.imgui_ctx.io_mut().update_delta_time(dt);
 
-        let frame = match self
-            .wgpu_backend
-            .surface
-            .get_current_frame()
-        {
-            Ok(frame) => frame,
+        let texture = match self.wgpu_backend.surface.get_current_texture() {
+            Ok(texture) => texture,
             Err(e) => {
-                log::error!("Dropped frame: {}", e);
+                log::error!("Unable to acquire texture surface texture: {}", e);
                 return;
             }
         };
@@ -187,17 +200,21 @@ impl Application {
 
         let imgui_frame = self.imgui_ctx.frame();
 
-        self.puffin_profiler_ui.window(&imgui_frame);
+        //self.puffin_profiler_ui.window(&imgui_frame);
+
+        self.camera.update();
 
         self.camera.render_ui(&imgui_frame);
 
         self.renderer.render(
             &self.wgpu_backend.device,
-            &frame,
+            &texture,
             imgui_frame,
             &self.wgpu_backend.queue,
             &self.camera,
         );
+
+        texture.present();
     }
 }
 
@@ -221,7 +238,9 @@ pub fn run_app(title: &str, width: u32, height: u32) -> ! {
         app,
         60,
         0.1,
-        |_g| {},
+        |g| {
+            g.game.update(&g.window);
+        },
         |g| {
             g.game.render(&g.window);
             puffin::GlobalProfiler::lock().new_frame();
@@ -229,25 +248,22 @@ pub fn run_app(title: &str, width: u32, height: u32) -> ! {
         |g, event| {
             let mut handled = false;
             match &event {
-                winit::event::Event::WindowEvent { event, .. } => {
-
-                    match event {
-                        winit::event::WindowEvent::CloseRequested
-                        | winit::event::WindowEvent::KeyboardInput {
-                            input:
-                                winit::event::KeyboardInput {
-                                    state: winit::event::ElementState::Pressed,
-                                    virtual_keycode: Some(winit::event::VirtualKeyCode::Escape),
-                                    ..
-                                },
-                            ..
-                        } => {
-                            g.exit();
-                            handled = true;
-                        }
-                        _ => (),
+                winit::event::Event::WindowEvent { event, .. } => match event {
+                    winit::event::WindowEvent::CloseRequested
+                    | winit::event::WindowEvent::KeyboardInput {
+                        input:
+                            winit::event::KeyboardInput {
+                                state: winit::event::ElementState::Pressed,
+                                virtual_keycode: Some(winit::event::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => {
+                        g.exit();
+                        handled = true;
                     }
-                }
+                    _ => (),
+                },
                 _ => (),
             };
 
