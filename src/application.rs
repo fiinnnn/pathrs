@@ -175,8 +175,8 @@ impl Application {
         self.input.update(event);
     }
 
-    fn update(&mut self) {
-        self.camera.update(&self.input);
+    fn update(&mut self, window: &Window) {
+        self.camera.update(&self.input, window);
     }
 
     fn render(&mut self, window: &Window) {
@@ -239,7 +239,7 @@ pub fn run_app(title: &str, width: u32, height: u32) -> ! {
         60,
         0.1,
         |g| {
-            g.game.update();
+            g.game.update(&g.window);
         },
         |g| {
             g.game.render(&g.window);

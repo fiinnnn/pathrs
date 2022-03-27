@@ -51,8 +51,12 @@ impl Camera {
         self.uniforms.height = height as f32;
     }
 
-    pub fn update(&mut self, input: &winit_input_helper::WinitInputHelper) {
-        self.input(input);
+    pub fn update(
+        &mut self,
+        input: &winit_input_helper::WinitInputHelper,
+        window: &winit::window::Window,
+    ) {
+        self.input(input, window);
 
         let (forward, right, p0, p0p1, p0p2) = calc_vecs(self.position, self.rotation);
         self.forward = forward;
@@ -62,7 +66,11 @@ impl Camera {
         self.uniforms.p0p2 = p0p2.xyzx().to_array();
     }
 
-    pub fn input(&mut self, input: &winit_input_helper::WinitInputHelper) {
+    pub fn input(
+        &mut self,
+        input: &winit_input_helper::WinitInputHelper,
+        window: &winit::window::Window,
+    ) {
         if input.key_held(VirtualKeyCode::W) {
             self.position += self.forward * 0.01;
         } else if input.key_held(VirtualKeyCode::S) {
@@ -81,15 +89,26 @@ impl Camera {
             self.position -= Vec3::new(0.0, 0.01, 0.0);
         }
 
-        // let (dx, dy) = input.mouse_diff();
-        // self.rotation.x += dy * 0.01;
-        // self.rotation.y -= dx * 0.01;
+        if let Some((mx, my)) = input.mouse() {
+            let (dx, dy) = (
+                mx - self.uniforms.width / 2.0,
+                my - self.uniforms.height / 2.0,
+            );
 
-        // if self.rotation.y > 2.0 * PI {
-        //     self.rotation.y = 0.0;
-        // } else if self.rotation.y < 0.0 {
-        //     self.rotation.y = 2.0 * PI;
-        // }
+            self.rotation.x += dy * 0.01;
+            self.rotation.y -= dx * 0.01;
+
+            if self.rotation.y > 2.0 * PI {
+                self.rotation.y = 0.0;
+            } else if self.rotation.y < 0.0 {
+                self.rotation.y = 2.0 * PI;
+            }
+
+            let _ = window.set_cursor_position(winit::dpi::LogicalPosition::new(
+                self.uniforms.width / 2.0,
+                self.uniforms.height / 2.0,
+            ));
+        }
     }
 
     pub fn render_ui(&mut self, ui: &Ui) {
@@ -112,7 +131,7 @@ impl Camera {
 }
 
 fn calc_vecs(position: Vec3, rotation: Vec3) -> (Vec3, Vec3, Vec3, Vec3, Vec3) {
-    let forward = -Vec3::normalize(Vec3::new(rotation.x.sin(), rotation.x, rotation.y.cos()));
+    let forward = -Vec3::normalize(Vec3::new(rotation.y.sin(), rotation.x, rotation.y.cos()));
 
     let right = Vec3::normalize(Vec3::cross(forward, Vec3::new(0.0, 1.0, 0.0)));
 
