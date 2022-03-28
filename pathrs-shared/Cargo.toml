@@ -1,0 +1,11 @@
+[package]
+name = "pathrs-shared"
+version = "0.1.0"
+edition = "2021"
+authors = ["Finn Vos <finn@fvos.de>"]
+publish = false
+
+[dependencies]
+spirv-std = { git = "https://github.com/EmbarkStudios/rust-gpu", branch = "main", features = [
+  "glam",
+] }
