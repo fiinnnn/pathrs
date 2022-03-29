@@ -17,7 +17,9 @@ imgui-wgpu = "0.19"
 log = "0.4.14"
 puffin = "0.13"
 puffin-imgui = "0.16"
-spirv-builder = { git = "https://github.com/EmbarkStudios/rust-gpu", branch = "main" }
 winit = "0.26"
 winit_input_helper = "0.11"
 wgpu = { version = "0.12", features = ["spirv"] }
+
+[build-dependencies]
+spirv-builder = { git = "https://github.com/EmbarkStudios/rust-gpu", branch = "main" }
