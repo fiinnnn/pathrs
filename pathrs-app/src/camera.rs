@@ -112,21 +112,21 @@ impl Camera {
     }
 
     pub fn render_ui(&mut self, ui: &Ui) {
-        Window::new("camera")
-            .size([250.0, 100.0], Condition::Always)
-            .build(ui, || {
-                ui.text(format!("Width: {}", self.uniforms.width));
-                ui.text(format!("Height: {}", self.uniforms.height));
+        // Window::new("camera")
+        //     .size([250.0, 100.0], Condition::Always)
+        //     .build(ui, || {
+        //         ui.text(format!("Width: {}", self.uniforms.width));
+        //         ui.text(format!("Height: {}", self.uniforms.height));
 
-                ui.text(format!(
-                    "pos: {} {} {}",
-                    self.position.x, self.position.y, self.position.z
-                ));
-                ui.text(format!(
-                    "rot: {} {} {}",
-                    self.rotation.x, self.rotation.y, self.rotation.z
-                ));
-            });
+        //         ui.text(format!(
+        //             "pos: {} {} {}",
+        //             self.position.x, self.position.y, self.position.z
+        //         ));
+        //         ui.text(format!(
+        //             "rot: {} {} {}",
+        //             self.rotation.x, self.rotation.y, self.rotation.z
+        //         ));
+        //     });
     }
 }
 

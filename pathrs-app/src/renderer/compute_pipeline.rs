@@ -5,16 +5,9 @@ pub struct ComputePipeline {
 
 impl ComputePipeline {
     pub fn new(device: &wgpu::Device) -> Self {
-        // let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-        //     label: Some("Compute shader"),
-        //     source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/compute.wgsl").into()),
-        // });
-
-        let shader_source = wgpu::util::make_spirv_raw(include_bytes!(env!("pathrs_shader.spv")));
-        let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-            label: Some("Compute shader"),
-            source: wgpu::ShaderSource::SpirV(std::borrow::Cow::Owned(shader_source.into_owned())),
-        });
+        let shader_module = unsafe {
+            device.create_shader_module_spirv(&wgpu::include_spirv_raw!(env!("pathrs_shader.spv")))
+        };
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Compute bind group layout"),
