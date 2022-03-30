@@ -56,7 +56,7 @@ impl Camera {
         input: &winit_input_helper::WinitInputHelper,
         window: &winit::window::Window,
     ) {
-        self.input(input, window);
+        // self.input(input, window);
 
         let (forward, right, p0, p0p1, p0p2) = calc_vecs(self.position, self.rotation);
         self.forward = forward;
