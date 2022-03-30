@@ -18,7 +18,7 @@ use spirv_std::macros::spirv;
 #[spirv(compute(threads(1)))]
 pub fn main_cs(
     #[spirv(global_invocation_id)] id: UVec3,
-    #[spirv(descriptor_set = 0, binding = 0)] out_texture: &Image!(2D, format=rgba8, sampled=false),
+    #[spirv(descriptor_set = 0, binding = 0)] out_texture: &Image!(2D, format=rgba32f, sampled=false),
 ) {
     unsafe {
         out_texture.write(
