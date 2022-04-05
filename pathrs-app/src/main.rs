@@ -1,5 +1,5 @@
 mod application;
-mod camera;
+mod camera_controller;
 mod renderer;
 
 use application::run_app;

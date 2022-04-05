@@ -1,9 +1,9 @@
 mod compute_pipeline;
 mod render_pipeline;
 
-use crate::camera::Camera;
 use crate::renderer::compute_pipeline::ComputePipeline;
 use crate::renderer::render_pipeline::RenderPipeline;
+use pathrs_shared::Camera;
 
 pub struct Renderer {
     width: u32,
@@ -27,7 +27,7 @@ impl Renderer {
         let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             //TODO; move to camera
             label: Some("Camera buffer"),
-            size: 80,
+            size: 32,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -74,18 +74,14 @@ impl Renderer {
         texture: &wgpu::SurfaceTexture,
         imgui_frame: imgui::Ui,
         queue: &wgpu::Queue,
-        camera: &Camera,
+        camera: &pathrs_shared::Camera,
     ) {
         puffin::profile_function!();
 
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        queue.write_buffer(
-            &self.camera_buffer,
-            0,
-            bytemuck::cast_slice(&[camera.uniforms]),
-        );
+        queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[*camera]));
 
         let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Compute bind group"),

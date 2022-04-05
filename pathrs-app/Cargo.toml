@@ -6,7 +6,7 @@ authors = ["Finn Vos <finn@fvos.de>"]
 publish = false
 
 [dependencies]
-bytemuck = { version = "1.4", features = ["derive"] }
+bytemuck = "1.9"
 env_logger = "0.9"
 futures = "0.3.15"
 game-loop = { version = "0.8", features = ["window"] }
@@ -15,6 +15,7 @@ imgui = "0.8"
 imgui-winit-support = { version = "0.8", features = ["winit-26"] }
 imgui-wgpu = "0.19"
 log = "0.4.14"
+pathrs-shared = { path = "../pathrs-shared" }
 puffin = "0.13"
 puffin-imgui = "0.16"
 winit = "0.26"

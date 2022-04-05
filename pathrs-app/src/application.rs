@@ -2,11 +2,10 @@ use std::time::Instant;
 
 use futures::executor::block_on;
 use game_loop::game_loop;
-use glam::Vec3;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::camera::Camera;
+use crate::camera_controller::CameraController;
 use crate::renderer::Renderer;
 
 struct WGPUBackend {
@@ -73,7 +72,8 @@ pub struct Application {
     imgui_ctx: imgui::Context,
     imgui_platform: imgui_winit_support::WinitPlatform,
     renderer: Renderer,
-    camera: Camera,
+    camera: pathrs_shared::Camera,
+    camera_controller: CameraController,
     puffin_profiler_ui: puffin_imgui::ProfilerUi,
     last_frame: Instant,
 }
@@ -114,12 +114,15 @@ impl Application {
             window_size.width,
             window_size.height,
         );
-        let camera = Camera::new(
-            window_size.width,
-            window_size.height,
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(0.0, 0.0, 0.0),
+
+        let camera = pathrs_shared::Camera::new(
+            window_size.width as f32,
+            window_size.height as f32,
+            // Vec3::new(0.0, 0.0, 0.0),
+            // Vec3::new(0.0, 0.0, 0.0),
         );
+
+        let camera_controller = CameraController::new();
 
         let puffin_profiler_ui = puffin_imgui::ProfilerUi::default();
 
@@ -132,6 +135,7 @@ impl Application {
             imgui_platform,
             renderer,
             camera,
+            camera_controller,
             puffin_profiler_ui,
             last_frame,
         }
@@ -147,7 +151,10 @@ impl Application {
         self.renderer
             .resize(&self.wgpu_backend.device, width, height);
 
-        self.camera.resize(width, height);
+        self.camera.width = width as f32;
+        self.camera.height = height as f32;
+
+        self.camera.position = glam::Vec4::new(0.0, 0.0, 1.0, 0.0);
 
         self.render(window);
     }
@@ -177,7 +184,8 @@ impl Application {
     }
 
     fn update(&mut self, window: &Window) {
-        self.camera.update(&self.input, window);
+        self.camera_controller
+            .update(&mut self.camera, &self.input, window);
     }
 
     fn render(&mut self, window: &Window) {
@@ -205,7 +213,7 @@ impl Application {
 
         //self.puffin_profiler_ui.window(&imgui_frame);
 
-        self.camera.render_ui(&imgui_frame);
+        //self.camera_controller.render_ui(&imgui_frame);
 
         self.renderer.render(
             &self.wgpu_backend.device,

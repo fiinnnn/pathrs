@@ -10,4 +10,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 pathrs-shared = { path = "../pathrs-shared" }
-spirv-std = { git = "https://github.com/EmbarkStudios/rust-gpu", branch = "main" }
+spirv-std = { git = "https://github.com/EmbarkStudios/rust-gpu", branch = "main", features = [
+  "glam",
+] }

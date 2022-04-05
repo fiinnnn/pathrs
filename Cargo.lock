@@ -135,18 +135,18 @@ checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
 name = "bytemuck"
-version = "1.8.0"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e851ca7c24871e7336801608a4797d7376545b6928a10d32d75685687141ead"
+checksum = "cdead85bdec19c194affaeeb670c0e41fe23de31459efd1c174d049269cf02cc"
 dependencies = [
  "bytemuck_derive",
 ]
 
 [[package]]
 name = "bytemuck_derive"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e215f8c2f9f79cb53c8335e687ffd07d5bfcb6fe5fc80723762d0be46e7cc54"
+checksum = "562e382481975bc61d11275ac5e62a19abd00b0547d99516a415336f183dcd0e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -851,9 +851,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
+checksum = "0f647032dfaa1f8b6dc29bd3edb7bbef4861b8b8007ebb118d6db284fd59f6ee"
 dependencies = [
  "autocfg",
  "hashbrown",
@@ -957,10 +957,11 @@ checksum = "33a33a362ce288760ec6a508b94caaec573ae7d3bbbd91b87aa0bad4456839db"
 
 [[package]]
 name = "lock_api"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88943dd7ef4a2e5a4bfa2753aaab3013e34ce2533d1996fb18ef591e315e2b3b"
+checksum = "327fa5b6a6940e4699ec49a9beae1ea4845c6bab9314e4f84ac68742139d8c53"
 dependencies = [
+ "autocfg",
  "scopeguard",
 ]
 
@@ -1339,7 +1340,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87f5ec2493a61ac0506c0f4199f99070cbe83857b0337006a30f3e6719b8ef58"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.1",
+ "parking_lot_core 0.9.2",
 ]
 
 [[package]]
@@ -1358,9 +1359,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28141e0cc4143da2443301914478dc976a61ffdb3f043058310c70df2fed8954"
+checksum = "995f667a6c822200b0433ac218e05582f0e2efa1b922a3fd2fbaadc5f87bab37"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -1382,6 +1383,7 @@ dependencies = [
  "imgui-wgpu",
  "imgui-winit-support",
  "log",
+ "pathrs-shared",
  "puffin",
  "puffin-imgui",
  "spirv-builder",
@@ -1402,6 +1404,8 @@ dependencies = [
 name = "pathrs-shared"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
+ "glam",
  "spirv-std",
 ]
 
@@ -1529,32 +1533,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e28f55143d0548dad60bb4fbdc835a3d7ac6acc3324506450c5fdd6e42903a76"
 dependencies = [
  "libc",
- "raw-window-handle 0.4.2",
+ "raw-window-handle 0.4.3",
 ]
 
 [[package]]
 name = "raw-window-handle"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fba75eee94a9d5273a68c9e1e105d9cffe1ef700532325788389e5a83e2522b7"
+checksum = "b800beb9b6e7d2df1fe337c9e3d04e3af22a124460fb4c30fcc22c9117cefb41"
 dependencies = [
  "cty",
 ]
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.12"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ae183fc1b06c149f0c1793e1eb447c8b04bfe46d48e9e48bfb8d2d7ed64ecf0"
+checksum = "62f25bc4c7e55e0b0b7a1d43fb893f4fa1361d0abe38b9ce4f323c2adfe6ef42"
 dependencies = [
  "bitflags",
 ]
 
 [[package]]
 name = "redox_users"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7776223e2696f1aa4c6b0170e83212f47296a00424305117d013dfe86fb0fe55"
+checksum = "b033d837a7cf162d7993aded9304e30a83213c648b6e389db233191f891e5c2b"
 dependencies = [
  "getrandom",
  "redox_syscall",
@@ -1610,7 +1614,7 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 [[package]]
 name = "rustc_codegen_spirv"
 version = "0.4.0-alpha.12"
-source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5a27455fcd0c3946f30693fff224c121c7f66385"
+source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5ac500d5b96145d72da6fe2a1059bd4e2a34b5e8"
 dependencies = [
  "ar",
  "bimap",
@@ -1620,12 +1624,22 @@ dependencies = [
  "num-traits",
  "rspirv",
  "rustc-demangle",
+ "rustc_codegen_spirv-types",
  "sanitize-filename",
  "serde",
  "serde_json",
  "smallvec",
  "spirv-tools",
  "syn",
+]
+
+[[package]]
+name = "rustc_codegen_spirv-types"
+version = "0.4.0-alpha.12"
+source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5ac500d5b96145d72da6fe2a1059bd4e2a34b5e8"
+dependencies = [
+ "rspirv",
+ "serde",
 ]
 
 [[package]]
@@ -1788,11 +1802,12 @@ dependencies = [
 [[package]]
 name = "spirv-builder"
 version = "0.4.0-alpha.12"
-source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5a27455fcd0c3946f30693fff224c121c7f66385"
+source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5ac500d5b96145d72da6fe2a1059bd4e2a34b5e8"
 dependencies = [
  "memchr",
  "raw-string",
  "rustc_codegen_spirv",
+ "rustc_codegen_spirv-types",
  "serde",
  "serde_json",
 ]
@@ -1800,7 +1815,7 @@ dependencies = [
 [[package]]
 name = "spirv-std"
 version = "0.4.0-alpha.12"
-source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5a27455fcd0c3946f30693fff224c121c7f66385"
+source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5ac500d5b96145d72da6fe2a1059bd4e2a34b5e8"
 dependencies = [
  "bitflags",
  "glam",
@@ -1812,7 +1827,7 @@ dependencies = [
 [[package]]
 name = "spirv-std-macros"
 version = "0.4.0-alpha.12"
-source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5a27455fcd0c3946f30693fff224c121c7f66385"
+source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5ac500d5b96145d72da6fe2a1059bd4e2a34b5e8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1841,7 +1856,7 @@ dependencies = [
 [[package]]
 name = "spirv-types"
 version = "0.4.0-alpha.12"
-source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5a27455fcd0c3946f30693fff224c121c7f66385"
+source = "git+https://github.com/EmbarkStudios/rust-gpu?branch=main#5ac500d5b96145d72da6fe2a1059bd4e2a34b5e8"
 
 [[package]]
 name = "static_assertions"
@@ -2200,7 +2215,7 @@ dependencies = [
  "log",
  "naga",
  "parking_lot 0.11.2",
- "raw-window-handle 0.4.2",
+ "raw-window-handle 0.4.3",
  "smallvec",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2226,7 +2241,7 @@ dependencies = [
  "naga",
  "parking_lot 0.11.2",
  "profiling",
- "raw-window-handle 0.4.2",
+ "raw-window-handle 0.4.3",
  "smallvec",
  "thiserror",
  "wgpu-hal",
@@ -2262,7 +2277,7 @@ dependencies = [
  "parking_lot 0.11.2",
  "profiling",
  "range-alloc",
- "raw-window-handle 0.4.2",
+ "raw-window-handle 0.4.3",
  "renderdoc-sys",
  "thiserror",
  "wasm-bindgen",
@@ -2313,9 +2328,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-sys"
-version = "0.32.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3df6e476185f92a12c072be4a189a0210dcdcf512a1891d6dff9edb874deadc6"
+checksum = "5acdd78cb4ba54c0045ac14f62d8f94a03d10047904ae2a40afa1e99d8f70825"
 dependencies = [
  "windows_aarch64_msvc",
  "windows_i686_gnu",
@@ -2326,33 +2341,33 @@ dependencies = [
 
 [[package]]
 name = "windows_aarch64_msvc"
-version = "0.32.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8e92753b1c443191654ec532f14c199742964a061be25d77d7a96f09db20bf5"
+checksum = "17cffbe740121affb56fad0fc0e421804adf0ae00891205213b5cecd30db881d"
 
 [[package]]
 name = "windows_i686_gnu"
-version = "0.32.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a711c68811799e017b6038e0922cb27a5e2f43a2ddb609fe0b6f3eeda9de615"
+checksum = "2564fde759adb79129d9b4f54be42b32c89970c18ebf93124ca8870a498688ed"
 
 [[package]]
 name = "windows_i686_msvc"
-version = "0.32.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "146c11bb1a02615db74680b32a68e2d61f553cc24c4eb5b4ca10311740e44172"
+checksum = "9cd9d32ba70453522332c14d38814bceeb747d80b3958676007acadd7e166956"
 
 [[package]]
 name = "windows_x86_64_gnu"
-version = "0.32.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c912b12f7454c6620635bbff3450962753834be2a594819bd5e945af18ec64bc"
+checksum = "cfce6deae227ee8d356d19effc141a509cc503dfd1f850622ec4b0f84428e1f4"
 
 [[package]]
 name = "windows_x86_64_msvc"
-version = "0.32.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "504a2476202769977a040c6364301a3f65d0cc9e3fb08600b2bda150a0488316"
+checksum = "d19538ccc21819d01deaf88d6a17eae6596a12e9aafdbb97916fb49896d89de9"
 
 [[package]]
 name = "winit"
@@ -2409,7 +2424,7 @@ dependencies = [
  "objc",
  "parking_lot 0.11.2",
  "percent-encoding",
- "raw-window-handle 0.4.2",
+ "raw-window-handle 0.4.3",
  "smithay-client-toolkit 0.15.3",
  "wasm-bindgen",
  "wayland-client 0.29.4",

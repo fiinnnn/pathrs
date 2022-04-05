@@ -9,3 +9,7 @@ publish = false
 spirv-std = { git = "https://github.com/EmbarkStudios/rust-gpu", branch = "main", features = [
   "glam",
 ] }
+
+[target.'cfg(not(target_arch = "spirv"))'.dependencies]
+bytemuck = { version = "1.9", features = ["derive"] }
+glam = { version = "0.20", default-features = false, features = ["bytemuck"] }
