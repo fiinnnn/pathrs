@@ -1,14 +1,14 @@
 mod compute_pipeline;
 mod render_pipeline;
 
+use crate::camera::Camera;
 use crate::renderer::compute_pipeline::ComputePipeline;
 use crate::renderer::render_pipeline::RenderPipeline;
-use pathrs_shared::Camera;
 
 pub struct Renderer {
     width: u32,
     height: u32,
-    camera_buffer: wgpu::Buffer,
+    viewport_buffer: wgpu::Buffer,
     compute_pipeline: ComputePipeline,
     render_pipeline: RenderPipeline,
     render_target: wgpu::TextureView,
@@ -24,25 +24,24 @@ impl Renderer {
         width: u32,
         height: u32,
     ) -> Self {
-        let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            //TODO; move to camera
-            label: Some("Camera buffer"),
-            size: 32,
+        let viewport_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Viewport buffer"),
+            size: std::mem::size_of::<pathrs_shared::Viewport>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let compute_pipeline = ComputePipeline::new(&device);
-        let render_pipeline = RenderPipeline::new(&device, &surface_config);
+        let compute_pipeline = ComputePipeline::new(device);
+        let render_pipeline = RenderPipeline::new(device, surface_config);
 
-        let render_target_texture = create_render_target_texture(&device, width, height);
+        let render_target_texture = create_render_target_texture(device, width, height);
         let render_target =
             render_target_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let imgui_renderer = imgui_wgpu::Renderer::new(
             imgui_ctx,
-            &device,
-            &queue,
+            device,
+            queue,
             imgui_wgpu::RendererConfig {
                 texture_format: surface_config.format,
                 ..Default::default()
@@ -52,7 +51,7 @@ impl Renderer {
         Self {
             width,
             height,
-            camera_buffer,
+            viewport_buffer,
             compute_pipeline,
             render_pipeline,
             render_target,
@@ -61,7 +60,7 @@ impl Renderer {
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        let render_target_texture = create_render_target_texture(&device, width, height);
+        let render_target_texture = create_render_target_texture(device, width, height);
         self.render_target =
             render_target_texture.create_view(&wgpu::TextureViewDescriptor::default());
         self.width = width;
@@ -74,14 +73,18 @@ impl Renderer {
         texture: &wgpu::SurfaceTexture,
         imgui_frame: imgui::Ui,
         queue: &wgpu::Queue,
-        camera: &pathrs_shared::Camera,
+        camera: &Camera,
     ) {
         puffin::profile_function!();
 
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-        queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[*camera]));
+        queue.write_buffer(
+            &self.viewport_buffer,
+            0,
+            bytemuck::cast_slice(&[camera.as_viewport()]),
+        );
 
         let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Compute bind group"),
@@ -93,7 +96,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: self.camera_buffer.as_entire_binding(),
+                    resource: self.viewport_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -141,12 +144,10 @@ impl Renderer {
             render_pass.set_bind_group(0, &render_bind_group, &[]);
             render_pass.draw(0..3, 0..1);
 
-            match self.imgui_renderer.render(
-                &imgui_frame.render(),
-                &queue,
-                &device,
-                &mut render_pass,
-            ) {
+            match self
+                .imgui_renderer
+                .render(imgui_frame.render(), queue, device, &mut render_pass)
+            {
                 Err(e) => log::error!("imgui render failed: {}", e),
                 _ => (),
             };

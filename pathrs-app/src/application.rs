@@ -5,7 +5,7 @@ use game_loop::game_loop;
 use winit::window::Window;
 use winit_input_helper::WinitInputHelper;
 
-use crate::camera_controller::CameraController;
+use crate::camera::{Camera, CameraController};
 use crate::renderer::Renderer;
 
 struct WGPUBackend {
@@ -72,7 +72,7 @@ pub struct Application {
     imgui_ctx: imgui::Context,
     imgui_platform: imgui_winit_support::WinitPlatform,
     renderer: Renderer,
-    camera: pathrs_shared::Camera,
+    camera: Camera,
     camera_controller: CameraController,
     puffin_profiler_ui: puffin_imgui::ProfilerUi,
     last_frame: Instant,
@@ -89,7 +89,7 @@ impl Application {
         let mut imgui_platform = imgui_winit_support::WinitPlatform::init(&mut imgui_ctx);
         imgui_platform.attach_window(
             imgui_ctx.io_mut(),
-            &window,
+            window,
             imgui_winit_support::HiDpiMode::Locked(1.0),
         );
 
@@ -115,12 +115,14 @@ impl Application {
             window_size.height,
         );
 
-        let camera = pathrs_shared::Camera::new(
-            window_size.width as f32,
-            window_size.height as f32,
-            // Vec3::new(0.0, 0.0, 0.0),
-            // Vec3::new(0.0, 0.0, 0.0),
-        );
+        let camera = Camera {
+            origin: glam::Vec3::new(0.0, 0.0, 0.0),
+            forward: glam::Vec3::new(0.0, 0.0, -1.0),
+            fov: 75.0,
+            aspect_ratio: window_size.width as f32 / window_size.height as f32,
+            width: window_size.width as f32,
+            height: window_size.height as f32,
+        };
 
         let camera_controller = CameraController::new();
 
@@ -151,10 +153,9 @@ impl Application {
         self.renderer
             .resize(&self.wgpu_backend.device, width, height);
 
+        self.camera.aspect_ratio = width as f32 / height as f32;
         self.camera.width = width as f32;
         self.camera.height = height as f32;
-
-        self.camera.position = glam::Vec4::new(0.0, 0.0, 1.0, 0.0);
 
         self.render(window);
     }
