@@ -20,6 +20,8 @@ mod ppm;
 mod renderer;
 mod scene;
 mod ui;
+#[cfg(feature = "simd")]
+mod simd;
 
 fn main() {
     App::new()

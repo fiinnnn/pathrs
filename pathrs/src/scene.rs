@@ -4,6 +4,9 @@ use bevy::math::{Vec3, Vec3A, vec3a};
 
 use crate::{material::Material, renderer::Ray};
 
+#[cfg(feature = "simd")]
+use std::arch::x86_64::*;
+
 #[derive(Default, Clone)]
 pub struct Scene {
     objects: Vec<SceneObject>,
@@ -380,6 +383,7 @@ impl Triangle {
 
 #[derive(Clone, Default)]
 pub struct Triangles {
+    count: usize,
     v0: Vec<Vec3A>,
     e1: Vec<Vec3A>,
     e2: Vec<Vec3A>,
@@ -389,6 +393,7 @@ pub struct Triangles {
 
 impl Triangles {
     pub fn push(&mut self, tri: Triangle) {
+        self.count += 1;
         self.v0.push(tri.v0);
         self.e1.push(tri.e1);
         self.e2.push(tri.e2);
@@ -402,7 +407,7 @@ impl Triangles {
         let mut idx = None;
         let mut pos = Vec3A::ZERO;
 
-        for i in 0..self.v0.len() {
+        for i in 0..self.count {
             let ray_cross_e2 = ray.direction.cross(self.e2[i]);
             let det = self.e1[i].dot(ray_cross_e2);
 
@@ -413,6 +418,141 @@ impl Triangles {
             let inv_det = 1.0 / det;
             let s = ray.origin - self.v0[i];
             let u = inv_det * s.dot(ray_cross_e2);
+            if !(0.0..=1.0).contains(&u) {
+                continue;
+            }
+
+            let s_cross_e1 = s.cross(self.e1[i]);
+            let v = inv_det * ray.direction.dot(s_cross_e1);
+            if v < 0.0 || u + v > 1.0 {
+                continue;
+            }
+
+            let t = inv_det * self.e2[i].dot(s_cross_e1);
+
+            if t > f32::EPSILON && tmin < t && closest > t {
+                closest = t;
+                idx = Some(i);
+                pos = ray.origin + ray.direction * t;
+            }
+        }
+
+        if let Some(i) = idx {
+            let normal = if ray.direction.dot(self.normal[i]) < 0.0 {
+                self.normal[i]
+            } else {
+                -self.normal[i]
+            };
+            Some(HitRecord {
+                pos,
+                normal,
+                t: closest,
+                material: self.material[i].clone(),
+            })
+        } else {
+            None
+        }
+    }
+}
+
+
+#[cfg(feature = "simd")]
+#[derive(Clone, Default)]
+pub struct TrianglesSIMD {
+    v0: Vec<[f32x8; 3]>,
+    e1: Vec<[f32x8; 3]>,
+    e2: Vec<[f32x8; 3]>,
+    n: Vec<[f32x8; 3]>,
+    material: Vec<Arc<dyn Material + Send + Sync>>,
+}
+
+#[cfg(feature = "simd")]
+macro_rules! to_f32x8 {
+    ($array:ident, $field:ident, $dim:ident, $i:ident) => {
+        f32x8 {
+            f32: [
+                $array.$field[$i].$dim,
+                $array.$field[$i + 1].$dim,
+                $array.$field[$i + 2].$dim,
+                $array.$field[$i + 3].$dim,
+                $array.$field[$i + 4].$dim,
+                $array.$field[$i + 5].$dim,
+                $array.$field[$i + 6].$dim,
+                $array.$field[$i + 7].$dim,
+            ],
+        }
+    };
+}
+
+#[cfg(feature = "simd")]
+impl TrianglesSIMD {
+    pub fn from_tris(&mut self, tris: Triangles) {
+        let count = tris.count / 8;
+        let mut i = 0;
+        while i < count {
+            self.v0.push([
+                to_f32x8!(tris, v0, x, i),
+                to_f32x8!(tris, v0, y, i),
+                to_f32x8!(tris, v0, z, i),
+            ]);
+
+            self.e1.push([
+                to_f32x8!(tris, e1, x, i),
+                to_f32x8!(tris, e1, y, i),
+                to_f32x8!(tris, e1, z, i),
+            ]);
+
+            self.e2.push([
+                to_f32x8!(tris, e2, x, i),
+                to_f32x8!(tris, e2, y, i),
+                to_f32x8!(tris, e2, z, i),
+            ]);
+
+            self.n.push([
+                to_f32x8!(tris, normal, x, i),
+                to_f32x8!(tris, normal, y, i),
+                to_f32x8!(tris, normal, z, i),
+            ]);
+
+            self.material.push(tris.material[i].clone());
+            self.material.push(tris.material[i + 1].clone());
+            self.material.push(tris.material[i + 2].clone());
+            self.material.push(tris.material[i + 3].clone());
+
+            i += 8;
+        }
+    }
+
+    const NEGATIVE_EPSILON: f32x8 = f32x8 { f32: [-f32::EPSILON; 8] };
+    const POSITIVE_EPSILON: f32x8 = f32x8 { f32: [f32::EPSILON; 8] };
+    const ONE_m256: __m256 = unsafe { f32x8 { f32: [1.0; 8] }.m256 };
+
+    #[inline(always)]
+    pub fn intersect(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
+        let mut closest = tmax;
+        let mut idx = None;
+        let mut pos = [f32x8::ZERO; 3];
+
+        let r_o = f32x8::from_vec(ray.origin);
+        let r_d = f32x8::from_vec(ray.direction);
+
+        for i in 0..self.v0.len() {
+            let mut ray_cross_e2 = [f32x8::ZERO; 3];
+            cross(r_d, self.e2[i], ray_cross_e2);
+            let det = dot(self.e1[i], ray_cross_e2);
+
+            let failed = unsafe {
+                _mm256_and_ps(
+                    _mm256_cmp_ps(det.m256, Self::NEGATIVE_EPSILON.m256, _CMP_GT_OQ),
+                    _mm256_cmp_ps(det.m256, Self::POSITIVE_EPSILON.m256, _CMP_LT_OQ),
+                )
+            };
+
+            let inv_det = unsafe { _mm256_div_ps(Self::ONE_m256, det.m256) };
+
+            let s = sub(r_o, self.v0[i]);
+
+            let u = inv_det * dot(s,ray_cross_e2);
             if !(0.0..=1.0).contains(&u) {
                 continue;
             }
