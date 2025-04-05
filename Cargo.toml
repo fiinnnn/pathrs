@@ -1,10 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["pathrs-app", "pathrs-shared", "pathrs-shader"]
+members = ["pathrs"]
 
-[profile.release.build-override]
-opt-level = 3
-codegen-units = 16
+[profile.dev]
+opt-level = 1
 
-[profile.dev.build-override]
+[profile.dev.package."*"]
 opt-level = 3
+
+[profile.profiling]
+inherits = "release"
+debug = true

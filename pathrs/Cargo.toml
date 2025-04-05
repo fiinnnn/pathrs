@@ -1,0 +1,14 @@
+[package]
+name = "pathrs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-channel = "2.3.1"
+bevy = "0.15.3"
+bevy_egui = "0.33.0"
+egui_tiles= "0.12.0"
+futures = "0.3.31"
+rand = "0.9.0"
+smol = "2.0.2"
+triple_buffer = "8.1.0"
