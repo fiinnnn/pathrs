@@ -68,6 +68,7 @@ impl Camera {
             + 0.5 * (self.screen_right + self.screen_down);
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn get_ray(&self, x: usize, y: usize) -> Ray {
         let jitter_x = rand::random_range(-0.5..=0.5);
         let jitter_y = rand::random_range(-0.5..=0.5);

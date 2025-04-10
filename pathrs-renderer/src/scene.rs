@@ -44,11 +44,13 @@ impl Scene {
     }
 
     #[cfg(feature = "simd")]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn collect_simd(&mut self) {
         self.triangles_simd.from_tris(self.triangles.clone());
         self.spheres_simd = SpheresSIMD::from_spheres(self.spheres.clone());
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn closest_hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         let mut res = None;
         let mut tmax = tmax;
@@ -219,6 +221,7 @@ impl Spheres {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn intersect_spheres(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         let mut closest = tmax;
         let mut hit = None;
@@ -431,6 +434,7 @@ impl Triangles {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn intersect(&self, ray: &Ray, tmin: f32, tmax: f32) -> Option<HitRecord> {
         let mut closest = tmax;
         let mut idx = None;
@@ -563,6 +567,7 @@ impl TrianglesSIMD {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn intersect(&self, ray: &Ray, tmin: f32, tmax: f32, r_o: Vec3x8, r_d: Vec3x8) -> Option<HitRecord> {
         let tmin = f32x8::splat(tmin);
 
@@ -731,6 +736,7 @@ impl SpheresSIMD {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn intersect(&self, ray: &Ray, tmin: f32, tmax: f32, r_o: Vec3x8, r_d: Vec3x8) -> Option<HitRecord> {
         let a = f32x8::splat(ray.direction.length_squared());
         let a_inv = f32x8::splat(1.0 / a[0]);

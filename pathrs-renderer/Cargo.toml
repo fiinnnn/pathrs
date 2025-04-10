@@ -13,5 +13,8 @@ rand = "0.9.0"
 static_assertions = "1.1.0"
 triple_buffer = "8.1.0"
 
+tracing = { version = "0.1.41", optional = true }
+
 [features]
 simd = []
+tracing = ["dep:tracing"]

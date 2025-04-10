@@ -256,6 +256,7 @@ impl Renderer {
 
 const MAX_DEPTH: usize = 10;
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 fn per_pixel(
     x: usize,
     y: usize,
@@ -271,6 +272,7 @@ fn per_pixel(
     res
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 fn trace_ray(
     ray: &Ray,
     scene: &Scene,

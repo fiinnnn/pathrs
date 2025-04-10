@@ -10,12 +10,22 @@ bevy = "0.15.3"
 bevy_egui = "0.33.0"
 clap = { version = "4.5.35", features = ["derive"] }
 crossbeam-channel = "0.5.14"
-egui_tiles= "0.12.0"
+egui_tiles = "0.12.0"
 futures = "0.3.31"
 rand = "0.9.0"
 smol = "2.0.2"
 triple_buffer = "8.1.0"
 
+tracing = { version = "0.1.41", optional = true }
+tracing-subscriber = { version = "0.3.19", optional = true }
+tracing-chrome = { version = "0.7.2", optional = true }
+
 [features]
 default = ["simd"]
 simd = ["pathrs-renderer/simd"]
+tracing = [
+  "pathrs-renderer/tracing",
+  "dep:tracing",
+  "dep:tracing-subscriber",
+  "dep:tracing-chrome",
+]

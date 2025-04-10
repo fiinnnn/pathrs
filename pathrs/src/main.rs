@@ -35,7 +35,15 @@ fn main() {
     }
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 fn render_image(width: u32, height: u32, samples_per_pixel: u32) {
+    #[cfg(feature = "tracing")]
+    use tracing_subscriber::prelude::*;
+    #[cfg(feature = "tracing")]
+    let (chrome_layer, _guard) = tracing_chrome::ChromeLayerBuilder::new().build();
+    #[cfg(feature = "tracing")]
+    tracing_subscriber::registry().with(chrome_layer).init();
+
     let (renderer, _, _) = Renderer::new(width, height);
 
     let img = renderer.render_image(samples_per_pixel);

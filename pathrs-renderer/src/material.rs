@@ -44,6 +44,7 @@ impl Lambertian {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn scatter(&self, _ray: &Ray, hit: &HitRecord, rng: &mut fastrand::Rng) -> Option<(Ray, Vec3)> {
         let mut scatter_dir = hit.normal + random_unit_vec(rng);
 
@@ -65,6 +66,7 @@ impl Lambertian {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn emitted(&self, _ray: &Ray, _hit: &HitRecord) -> Vec3 {
         Vec3::ZERO
     }
@@ -88,6 +90,7 @@ impl Metal {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn scatter(&self, ray: &Ray, hit: &HitRecord, rng: &mut fastrand::Rng) -> Option<(Ray, Vec3)> {
         let reflected = ray.direction.reflect(hit.normal);
         let reflected = reflected.normalize() + self.fuzz * random_unit_vec(rng);
@@ -101,6 +104,7 @@ impl Metal {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn emitted(&self, _ray: &Ray, _hit: &HitRecord) -> Vec3 {
         Vec3::ZERO
     }
@@ -123,6 +127,7 @@ impl Dielectric {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn scatter(&self, ray: &Ray, hit: &HitRecord, rng: &mut fastrand::Rng) -> Option<(Ray, Vec3)> {
         let attenuation = vec3(1.0, 1.0, 1.0);
 
@@ -153,6 +158,7 @@ impl Dielectric {
     }
 
     #[inline(always)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn emitted(&self, _ray: &Ray, _hit: &HitRecord) -> Vec3 {
         Vec3::ZERO
     }
