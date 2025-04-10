@@ -6,7 +6,7 @@ use bevy::{
 use bevy_egui::{EguiContexts, egui};
 use egui_tiles::{Container, Linear, LinearDir, Tile, TileId, Tiles, Tree, UiResponse};
 
-use crate::{RAYS_PER_SECOND, RENDER_TIME};
+use crate::app::{RAYS_PER_SECOND, RENDER_TIME};
 
 #[derive(Resource)]
 pub struct UiState {

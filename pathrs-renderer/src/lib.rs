@@ -6,6 +6,7 @@ use std::{
 
 use camera::Camera;
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use fastrand::Rng;
 use glam::{UVec2, Vec3, Vec4, uvec2, vec3};
 use material::{Dielectric, DiffuseLight, Lambertian, Metal};
 use scene::{Scene, Sphere, Triangle};
@@ -171,10 +172,10 @@ impl Renderer {
     }
 
     pub fn start_thread(self) {
-        thread::spawn(|| self.run());
+        thread::spawn(|| self.run_loop());
     }
 
-    fn run(mut self) {
+    fn run_loop(mut self) {
         println!("TID: {}", unsafe { libc::syscall(libc::SYS_gettid) });
 
         let mut rng = fastrand::Rng::new();
@@ -188,54 +189,81 @@ impl Renderer {
             }
 
             match self.cmd_rx.try_recv() {
-                Ok(RendererCmd::Stop) | Err(TryRecvError::Disconnected) => break,
+                Ok(RendererCmd::Stop) | Err(TryRecvError::Disconnected) => return,
                 _ => (),
             }
 
-            let RenderResult {
-                image_data,
-                image_size,
-                render_time,
-                rays_per_second,
-            } = self.out_buffer.input_buffer_mut();
-
-            let start = Instant::now();
-
-            *image_size = self.size;
-            self.samples += 1;
-
-            let (width, height) = (image_size.x as usize, image_size.y as usize);
-
-            let len = width * height;
-            if image_data.len() != len {
-                image_data.resize(len, [0.0; 4]);
-                acc.clear();
-                acc.resize(len, Vec4::ZERO);
-            }
-
-            let mut ray_count = 0;
-
-            for y in 0..height {
-                for x in 0..width {
-                    acc[x + y * width] +=
-                        per_pixel(x, y, &self.camera, &self.scene, &mut ray_count, &mut rng);
-                    image_data[x + y * width] =
-                        (acc[x + y * width] / self.samples as f32).to_array();
-                }
-            }
-
-            let end = start.elapsed();
-            *render_time = end;
-            *rays_per_second = ray_count as f64 / end.as_secs_f64();
-
-            self.out_buffer.publish();
+            self.render_pass(&mut acc, &mut rng);
         }
+    }
+
+    pub fn render_image(mut self, samples_per_pixel: u32) -> Vec<[f32; 4]> {
+        let mut rng = fastrand::Rng::new();
+        let mut acc = vec![Vec4::ZERO];
+
+        for i in 0..samples_per_pixel {
+            if i % 10 == 0 {
+                println!("{i}/{samples_per_pixel}");
+            }
+
+            self.render_pass(&mut acc, &mut rng);
+        }
+
+        acc.into_iter()
+            .map(|p| (p / samples_per_pixel as f32).to_array())
+            .collect()
+    }
+
+    fn render_pass(&mut self, acc: &mut Vec<Vec4>, rng: &mut Rng) {
+        let RenderResult {
+            image_data,
+            image_size,
+            render_time,
+            rays_per_second,
+        } = self.out_buffer.input_buffer_mut();
+
+        let start = Instant::now();
+
+        *image_size = self.size;
+        self.samples += 1;
+
+        let (width, height) = (image_size.x as usize, image_size.y as usize);
+
+        let len = width * height;
+        if image_data.len() != len {
+            image_data.resize(len, [0.0; 4]);
+            acc.clear();
+            acc.resize(len, Vec4::ZERO);
+        }
+
+        let mut ray_count = 0;
+
+        for y in 0..height {
+            for x in 0..width {
+                acc[x + y * width] +=
+                    per_pixel(x, y, &self.camera, &self.scene, &mut ray_count, rng);
+                image_data[x + y * width] = (acc[x + y * width] / self.samples as f32).to_array();
+            }
+        }
+
+        let end = start.elapsed();
+        *render_time = end;
+        *rays_per_second = ray_count as f64 / end.as_secs_f64();
+
+        self.out_buffer.publish();
     }
 }
 
 const MAX_DEPTH: usize = 10;
 
-fn per_pixel(x: usize, y: usize, camera: &Camera, scene: &Scene, ray_count: &mut usize, rng: &mut fastrand::Rng) -> Vec4 {
+fn per_pixel(
+    x: usize,
+    y: usize,
+    camera: &Camera,
+    scene: &Scene,
+    ray_count: &mut usize,
+    rng: &mut fastrand::Rng,
+) -> Vec4 {
     let mut res = Vec4::ZERO;
     let ray = camera.get_ray(x, y);
     let col = trace_ray(&ray, scene, 0, ray_count, rng);
@@ -243,7 +271,13 @@ fn per_pixel(x: usize, y: usize, camera: &Camera, scene: &Scene, ray_count: &mut
     res
 }
 
-fn trace_ray(ray: &Ray, scene: &Scene, depth: usize, ray_count: &mut usize, rng: &mut fastrand::Rng) -> Vec3 {
+fn trace_ray(
+    ray: &Ray,
+    scene: &Scene,
+    depth: usize,
+    ray_count: &mut usize,
+    rng: &mut fastrand::Rng,
+) -> Vec3 {
     if depth == MAX_DEPTH {
         return Vec3::ZERO;
     }
