@@ -1,22 +1,38 @@
-use std::time::{Duration, Instant};
-
-use async_channel::{Receiver, Sender};
-use bevy::math::{vec3, UVec2, Vec3, Vec3A, Vec4};
-
-use crate::{
-    camera::Camera,
-    material::{Dielectric, DiffuseLight, Lambertian, Metal},
-    scene::{Scene, Sphere, Triangle},
+use std::{
+    sync::Mutex,
+    thread,
+    time::{Duration, Instant},
 };
 
-#[derive(Clone, Copy)]
+use camera::Camera;
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use glam::{UVec2, Vec3, Vec4, uvec2, vec3};
+use material::{Dielectric, DiffuseLight, Lambertian, Metal};
+use scene::{Scene, Sphere, Triangle};
+
+mod camera;
+mod material;
+mod scene;
+
+#[cfg(feature = "simd")]
+mod simd;
+
+static SCREEN_RESIZE: Mutex<Option<UVec2>> = Mutex::new(None);
+
+pub fn resize_render_target(width: u32, height: u32) {
+    if let Ok(mut l) = SCREEN_RESIZE.lock() {
+        l.replace(uvec2(width, height));
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum RendererCmd {
-    Resize { size: UVec2 },
+    Stop,
 }
 
 #[derive(Clone, Default)]
 pub struct RenderResult {
-    pub image_data: Vec<Vec4>,
+    pub image_data: Vec<[f32; 4]>,
     pub image_size: UVec2,
     pub render_time: Duration,
     pub rays_per_second: f64,
@@ -28,28 +44,30 @@ pub struct Renderer {
     size: UVec2,
 
     cmd_rx: Receiver<RendererCmd>,
-    input: triple_buffer::Input<RenderResult>,
+    out_buffer: triple_buffer::Input<RenderResult>,
 
     samples: usize,
 }
 
 impl Renderer {
     pub fn new(
-        size: UVec2,
+        width: u32,
+        height: u32,
     ) -> (
         Renderer,
         Sender<RendererCmd>,
         triple_buffer::Output<RenderResult>,
     ) {
-        let camera =
-            crate::camera::Camera::new(vec3(0.0, 15.0, -2.5), vec3(0.0, 15.0, -5.5), 90.0, size);
+        let size = uvec2(width, height);
 
-        let mut scene = crate::scene::Scene::default();
+        let camera = Camera::new(vec3(0.0, 15.0, -2.5), vec3(0.0, 15.0, -5.5), 90.0, size);
 
-        let red = Metal::new(vec3(0.85, 0.30, 0.30), 0.2);
-        let white = Lambertian::new(vec3(0.73, 0.73, 0.73));
-        let green = Lambertian::new(vec3(0.12, 0.45, 0.15));
-        let light = DiffuseLight::new(vec3(5.0, 5.0, 5.0));
+        let mut scene = Scene::default();
+
+        let red = scene.add_material(Metal::new(vec3(0.85, 0.30, 0.30), 0.2));
+        let white = scene.add_material(Lambertian::new(vec3(0.73, 0.73, 0.73)));
+        let green = scene.add_material(Lambertian::new(vec3(0.12, 0.45, 0.15)));
+        let light = scene.add_material(DiffuseLight::new(vec3(5.0, 5.0, 5.0)));
 
         scene.add_triangles(&Triangle::quad(
             vec3(-20.0, 0.0, 0.0),
@@ -72,7 +90,7 @@ impl Renderer {
             vec3(20.0, 0.0, 0.0),
             vec3(-20.0, 0.0, -40.0),
             vec3(20.0, 0.0, -40.0),
-            white.clone(),
+            white,
         ));
 
         scene.add_triangles(&Triangle::quad(
@@ -80,7 +98,7 @@ impl Renderer {
             vec3(20.0, 40.0, 0.0),
             vec3(-20.0, 40.0, -40.0),
             vec3(20.0, 40.0, -40.0),
-            white.clone(),
+            white,
         ));
 
         scene.add_triangles(&Triangle::quad(
@@ -88,7 +106,7 @@ impl Renderer {
             vec3(20.0, 0.0, -40.0),
             vec3(-20.0, 40.0, -40.0),
             vec3(20.0, 40.0, -40.0),
-            white.clone(),
+            white,
         ));
 
         scene.add_triangles(&Triangle::quad(
@@ -96,7 +114,7 @@ impl Renderer {
             vec3(20.0, 0.0, 0.0),
             vec3(-20.0, 40.0, 0.0),
             vec3(20.0, 40.0, 0.0),
-            white.clone(),
+            white,
         ));
 
         scene.add_triangles(&Triangle::quad(
@@ -107,12 +125,13 @@ impl Renderer {
             light,
         ));
 
-        let sphere = Dielectric::new(1.50);
-        let sphere_inner = Dielectric::new(1.00 / 1.50);
+        let sphere = scene.add_material(Dielectric::new(1.50));
         scene.add_object(Sphere::new(vec3(-6.0, 8.0, -26.0), 5.0, sphere));
+
+        // let sphere_inner = scene.add_material(Dielectric::new(1.00 / 1.50));
         // scene.add_object(Sphere::new(vec3(-7.0, 9.0, -26.0), 4.0, sphere_inner));
 
-        let mirror = Metal::new(vec3(0.82, 0.82, 0.82), 0.01);
+        let mirror = scene.add_material(Metal::new(vec3(0.82, 0.82, 0.82), 0.01));
         scene.add_triangles(&Triangle::quad(
             vec3(7.5, 0.0, -35.0),
             vec3(12.5, 0.0, -31.0),
@@ -121,23 +140,21 @@ impl Renderer {
             mirror,
         ));
 
-        let metal = Metal::new(vec3(0.72, 0.45, 0.12), 0.64);
+        let metal = scene.add_material(Metal::new(vec3(0.72, 0.45, 0.12), 0.64));
         scene.add_object(Sphere::new(vec3(-4.0, 20.0, -24.0), 2.5, metal));
 
-        scene.add_object(Sphere::new(
-            vec3(-17.0, 3.0, -37.0),
-            1.5,
-            Dielectric::new(1.5),
-        ));
-        scene.add_object(Sphere::new(
-            vec3(-17.0, 3.0, -37.0),
-            1.0,
-            DiffuseLight::new(vec3(3.5, 1.8, 0.2)),
-        ));
+        let glass = scene.add_material(Dielectric::new(1.5));
+        scene.add_object(Sphere::new(vec3(-17.0, 3.0, -37.0), 1.5, glass));
+
+        let light_sphere = scene.add_material(DiffuseLight::new(vec3(3.5, 1.8, 0.2)));
+        scene.add_object(Sphere::new(vec3(-17.0, 3.0, -37.0), 1.0, light_sphere));
+
+        #[cfg(feature = "simd")]
+        scene.collect_simd();
 
         let (input, output) = triple_buffer::triple_buffer(&RenderResult::default());
 
-        let (cmd_tx, cmd_rx) = async_channel::bounded(1);
+        let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded();
 
         (
             Renderer {
@@ -145,7 +162,7 @@ impl Renderer {
                 scene,
                 size,
                 cmd_rx,
-                input,
+                out_buffer: input,
                 samples: 0,
             },
             cmd_tx,
@@ -153,25 +170,34 @@ impl Renderer {
         )
     }
 
-    pub async fn run_renderer(mut self) {
+    pub fn start_thread(self) {
+        thread::spawn(|| self.run());
+    }
+
+    fn run(mut self) {
+        println!("TID: {}", unsafe { libc::syscall(libc::SYS_gettid) });
+
+        let mut rng = fastrand::Rng::new();
         let mut acc = vec![Vec4::ZERO];
 
         loop {
+            if let Some(size) = SCREEN_RESIZE.lock().ok().and_then(|mut l| l.take()) {
+                self.size = size;
+                self.camera.resize(size);
+                self.samples = 0;
+            }
+
             match self.cmd_rx.try_recv() {
-                Ok(RendererCmd::Resize { size }) => {
-                    self.size = size;
-                    self.camera.resize(size);
-                    self.samples = 0;
-                }
-                Err(_) => (),
-            };
+                Ok(RendererCmd::Stop) | Err(TryRecvError::Disconnected) => break,
+                _ => (),
+            }
 
             let RenderResult {
                 image_data,
                 image_size,
                 render_time,
                 rays_per_second,
-            } = self.input.input_buffer_mut();
+            } = self.out_buffer.input_buffer_mut();
 
             let start = Instant::now();
 
@@ -182,7 +208,7 @@ impl Renderer {
 
             let len = width * height;
             if image_data.len() != len {
-                image_data.resize(len, Vec4::ZERO);
+                image_data.resize(len, [0.0; 4]);
                 acc.clear();
                 acc.resize(len, Vec4::ZERO);
             }
@@ -192,8 +218,9 @@ impl Renderer {
             for y in 0..height {
                 for x in 0..width {
                     acc[x + y * width] +=
-                        per_pixel(x, y, &self.camera, &self.scene, &mut ray_count);
-                    image_data[x + y * width] = acc[x + y * width] / self.samples as f32;
+                        per_pixel(x, y, &self.camera, &self.scene, &mut ray_count, &mut rng);
+                    image_data[x + y * width] =
+                        (acc[x + y * width] / self.samples as f32).to_array();
                 }
             }
 
@@ -201,22 +228,22 @@ impl Renderer {
             *render_time = end;
             *rays_per_second = ray_count as f64 / end.as_secs_f64();
 
-            self.input.publish();
+            self.out_buffer.publish();
         }
     }
 }
 
 const MAX_DEPTH: usize = 10;
 
-fn per_pixel(x: usize, y: usize, camera: &Camera, scene: &Scene, ray_count: &mut usize) -> Vec4 {
+fn per_pixel(x: usize, y: usize, camera: &Camera, scene: &Scene, ray_count: &mut usize, rng: &mut fastrand::Rng) -> Vec4 {
     let mut res = Vec4::ZERO;
     let ray = camera.get_ray(x, y);
-    let col = trace_ray(&ray, scene, 0, ray_count);
+    let col = trace_ray(&ray, scene, 0, ray_count, rng);
     res += col.extend(1.0);
     res
 }
 
-fn trace_ray(ray: &Ray, scene: &Scene, depth: usize, ray_count: &mut usize) -> Vec3 {
+fn trace_ray(ray: &Ray, scene: &Scene, depth: usize, ray_count: &mut usize, rng: &mut fastrand::Rng) -> Vec3 {
     if depth == MAX_DEPTH {
         return Vec3::ZERO;
     }
@@ -224,10 +251,11 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: usize, ray_count: &mut usize) -> V
     *ray_count += 1;
 
     if let Some(hit) = scene.closest_hit(ray, 0.0001, f32::MAX) {
-        let emitted = hit.material.emitted(ray, &hit);
+        let mat = scene.materials[hit.material as usize];
+        let emitted = mat.emitted(ray, &hit);
 
-        let scattered = if let Some((scattered, attenuation)) = hit.material.scatter(ray, &hit) {
-            attenuation * trace_ray(&scattered, scene, depth + 1, ray_count)
+        let scattered = if let Some((scattered, attenuation)) = mat.scatter(ray, &hit, rng) {
+            attenuation * trace_ray(&scattered, scene, depth + 1, ray_count, rng)
         } else {
             Vec3::ZERO
         };
@@ -241,12 +269,12 @@ fn trace_ray(ray: &Ray, scene: &Scene, depth: usize, ray_count: &mut usize) -> V
 }
 
 pub struct Ray {
-    pub origin: Vec3A,
-    pub direction: Vec3A,
+    pub origin: Vec3,
+    pub direction: Vec3,
 }
 
 impl Ray {
-    pub fn new(origin: Vec3A, direction: Vec3A) -> Self {
+    pub fn new(origin: Vec3, direction: Vec3) -> Self {
         Self { origin, direction }
     }
 }

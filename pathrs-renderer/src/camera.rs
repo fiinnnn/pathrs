@@ -1,16 +1,16 @@
 use std::f32::consts::PI;
 
-use bevy::math::{UVec2, Vec3, Vec3A, vec3};
+use glam::{vec3, UVec2, Vec3};
 
-use crate::renderer::Ray;
+use crate::Ray;
 
 #[derive(Clone)]
 pub struct Camera {
-    screen_upper_left: Vec3A,
-    screen_right: Vec3A,
-    screen_down: Vec3A,
+    screen_upper_left: Vec3,
+    screen_right: Vec3,
+    screen_down: Vec3,
 
-    look_from: Vec3A,
+    look_from: Vec3,
     look_at: Vec3,
     v_up: Vec3,
 
@@ -23,9 +23,9 @@ pub struct Camera {
 impl Camera {
     pub fn new(look_from: Vec3, look_at: Vec3, vfov: f32, size: UVec2) -> Camera {
         let mut camera = Camera {
-            screen_upper_left: Vec3A::ZERO,
-            screen_right: Vec3A::ZERO,
-            screen_down: Vec3A::ZERO,
+            screen_upper_left: Vec3::ZERO,
+            screen_right: Vec3::ZERO,
+            screen_down: Vec3::ZERO,
 
             look_from: look_from.into(),
             look_at,
@@ -62,9 +62,9 @@ impl Camera {
         self.screen_down = (viewport_v / size.y as f32).into();
 
         self.screen_upper_left = self.look_from
-            - (focal_length * Vec3A::from(self.w))
-            - (Vec3A::from(viewport_u) / 2.0)
-            - (Vec3A::from(viewport_v) / 2.0)
+            - (focal_length * Vec3::from(self.w))
+            - (viewport_u / 2.0)
+            - (viewport_v / 2.0)
             + 0.5 * (self.screen_right + self.screen_down);
     }
 

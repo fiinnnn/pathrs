@@ -1,0 +1,22 @@
+==== Next Steps ====
+[ ] SIMD material evaluation (bucket hits by material)
+[ ] Improved metrics collection & aggregation
+[ ] Headless rendering mode (no Bevy, write to file)
+
+==== Renderer ====
+[ ] Multithreaded rendering (zero-copy writes per thread)
+[ ] BVH with SIMD traversal
+[ ] HDR environment maps
+[ ] (Multiple) importance sampling
+[ ] Photon mapping / SPPM
+[ ] Adaptive sampling (early pixel convergence)
+[ ] Denoising / filtering
+[ ] Variance buffer or debug heatmaps
+[ ] Wavefront path tracing on CPU
+[ ] Wavefront path tracing on GPU
+[ ] Reprojection
+
+==== Scenes ====
+[ ] Interactive camera and scene updates
+[ ] Scene serialization / loading
+[ ] Import triangle meshes (e.g. Stanford dragon)

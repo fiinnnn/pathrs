@@ -1,4 +1,3 @@
-use async_channel::Sender;
 use bevy::{
     diagnostic::{
         Diagnostic, DiagnosticPath, Diagnostics, FrameTimeDiagnosticsPlugin, RegisterDiagnostic,
@@ -7,21 +6,15 @@ use bevy::{
     render::render_resource::{
         Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     },
-    tasks::AsyncComputeTaskPool,
 };
 
 use bevy_egui::{EguiContexts, EguiPlugin};
-use renderer::{RenderResult, Renderer, RendererCmd};
+use crossbeam_channel::Sender;
+use pathrs_renderer::{RenderResult, Renderer, RendererCmd};
 use ui::{EguiViewport, init_ui, render_ui};
 
-mod camera;
-mod material;
 mod ppm;
-mod renderer;
-mod scene;
 mod ui;
-#[cfg(feature = "simd")]
-mod simd;
 
 fn main() {
     App::new()
@@ -51,6 +44,12 @@ struct RenderTarget {
 struct RenderTask {
     cmd_tx: Sender<RendererCmd>,
     output: triple_buffer::Output<RenderResult>,
+}
+
+impl Drop for RenderTask {
+    fn drop(&mut self) {
+        let _ = self.cmd_tx.send(RendererCmd::Stop);
+    }
 }
 
 fn init_renderer(
@@ -95,10 +94,9 @@ fn init_renderer(
         size,
     });
 
-    let (renderer, cmd_tx, out) = Renderer::new(size);
-    AsyncComputeTaskPool::get()
-        .spawn(renderer.run_renderer())
-        .detach();
+    let (renderer, cmd_tx, out) = Renderer::new(size.x, size.y);
+
+    renderer.start_thread();
 
     commands.insert_resource(RenderTask {
         cmd_tx,
@@ -109,7 +107,6 @@ fn init_renderer(
 fn resize_render_target(
     mut render_target: ResMut<RenderTarget>,
     egui_viewport: Res<EguiViewport>,
-    render_task: Res<RenderTask>,
     mut last_size: Local<UVec2>,
 ) {
     if egui_viewport.size != render_target.size
@@ -120,12 +117,7 @@ fn resize_render_target(
         println!("resize {} {}", egui_viewport.size.x, egui_viewport.size.y);
         render_target.size = egui_viewport.size;
 
-        render_task
-            .cmd_tx
-            .force_send(RendererCmd::Resize {
-                size: egui_viewport.size,
-            })
-            .expect("renderer command channel closed");
+        pathrs_renderer::resize_render_target(egui_viewport.size.x, egui_viewport.size.y);
     }
 
     *last_size = egui_viewport.size;
@@ -163,8 +155,8 @@ fn receive_render(
 
     let image_bytes = image_data
         .iter()
-        .flat_map(Vec4::to_array)
-        .flat_map(f32::to_le_bytes)
+        .flatten()
+        .flat_map(|f| f.to_le_bytes())
         .collect();
 
     image.data = image_bytes;

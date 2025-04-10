@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["pathrs"]
+members = ["pathrs", "pathrs-renderer"]
 
 [profile.dev]
 opt-level = 1
