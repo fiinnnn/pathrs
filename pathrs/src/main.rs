@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use pathrs_renderer::Renderer;
+use pathrs_renderer::{RenderSystem, renderer::CPURenderer};
 use ppm::write_ppm_file;
 
 mod app;
@@ -44,7 +44,7 @@ fn render_image(width: u32, height: u32, samples_per_pixel: u32) {
     #[cfg(feature = "tracing")]
     tracing_subscriber::registry().with(chrome_layer).init();
 
-    let (renderer, _, _) = Renderer::new(width, height);
+    let (renderer, _, _) = RenderSystem::<CPURenderer>::new(width, height);
 
     let img = renderer.render_image(samples_per_pixel);
 

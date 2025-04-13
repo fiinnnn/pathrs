@@ -1,7 +1,6 @@
-use glam::{vec3, vec3a, Vec3, Vec3A};
-use rand::Rng;
+use glam::{Vec3, vec3};
 
-use crate::{Ray, scene::HitRecord};
+use crate::{Ray, HitRecord};
 
 #[derive(Clone, Copy)]
 pub enum Material {
@@ -13,7 +12,12 @@ pub enum Material {
 
 impl Material {
     #[inline(always)]
-    pub fn scatter(&self, ray: &Ray, hit: &HitRecord, rng: &mut fastrand::Rng) -> Option<(Ray, Vec3)> {
+    pub fn scatter(
+        &self,
+        ray: &Ray,
+        hit: &HitRecord,
+        rng: &mut fastrand::Rng,
+    ) -> Option<(Ray, Vec3)> {
         match self {
             Material::Lambertian(l) => l.scatter(ray, hit, rng),
             Material::Metal(m) => m.scatter(ray, hit, rng),
@@ -142,12 +146,11 @@ impl Dielectric {
         let cos_theta = -unit_dir.dot(n).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let direction =
-            if ri * sin_theta > 1.0 || reflectance(cos_theta, ri) > rng.f32() {
-                unit_dir.reflect(n)
-            } else {
-                unit_dir.refract(n, ri)
-            };
+        let direction = if ri * sin_theta > 1.0 || reflectance(cos_theta, ri) > rng.f32() {
+            unit_dir.reflect(n)
+        } else {
+            unit_dir.refract(n, ri)
+        };
 
         let scattered = Ray {
             origin: hit.pos,
@@ -188,7 +191,12 @@ impl DiffuseLight {
     }
 
     #[inline(always)]
-    fn scatter(&self, _ray: &Ray, _hit: &HitRecord, _rng: &mut fastrand::Rng) -> Option<(Ray, Vec3)> {
+    fn scatter(
+        &self,
+        _ray: &Ray,
+        _hit: &HitRecord,
+        _rng: &mut fastrand::Rng,
+    ) -> Option<(Ray, Vec3)> {
         None
     }
 
@@ -235,5 +243,6 @@ fn random_unit_vec(rng: &mut fastrand::Rng) -> Vec3 {
         rng.f32_range(-1.0..=1.0),
         rng.f32_range(-1.0..=1.0),
         rng.f32_range(-1.0..=1.0),
-    ).normalize()
+    )
+    .normalize()
 }
