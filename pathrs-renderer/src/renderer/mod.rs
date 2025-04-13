@@ -1,11 +1,7 @@
 use fastrand::Rng;
-use glam::{Vec4};
+use glam::Vec4;
 
-use crate::{
-    camera::Camera,
-    metrics::RenderPassMetrics,
-    scene::Scene,
-};
+use crate::{camera::Camera, metrics::RenderPassMetrics, scene::Scene};
 
 mod cpu_renderer;
 
@@ -22,4 +18,3 @@ pub trait Renderer: Sync + Send + 'static {
         rng: &mut Rng,
     ) -> RenderPassMetrics;
 }
-

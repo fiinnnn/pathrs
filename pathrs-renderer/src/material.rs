@@ -1,6 +1,6 @@
 use glam::{Vec3, vec3};
 
-use crate::{Ray, HitRecord};
+use crate::{HitRecord, Ray};
 
 #[derive(Clone, Copy)]
 pub enum Material {

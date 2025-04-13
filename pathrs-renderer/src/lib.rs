@@ -1,11 +1,9 @@
-use std::{
-    thread,
-    time::{Duration, Instant},
-};
+use std::{thread, time::Instant};
 
 use camera::Camera;
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use glam::{UVec2, Vec3, Vec4, uvec2, vec3};
+use metrics::RenderPassMetrics;
 use scene::Scene;
 
 use crate::renderer::Renderer;
@@ -13,9 +11,11 @@ use crate::renderer::Renderer;
 mod camera;
 mod geometry;
 mod material;
-mod metrics;
 pub mod renderer;
 mod scene;
+
+#[cfg(feature = "metrics")]
+pub mod metrics;
 
 #[cfg(feature = "simd")]
 mod simd;
@@ -30,8 +30,7 @@ pub enum RendererCmd {
 pub struct RenderResult {
     pub image_data: Vec<[f32; 4]>,
     pub image_size: UVec2,
-    pub render_time: Duration,
-    pub rays_per_second: f64,
+    pub render_pass_metrics: RenderPassMetrics,
 }
 
 pub struct RenderSystem<R: Renderer> {
@@ -123,8 +122,7 @@ impl<R: Renderer> RenderSystem<R> {
             let RenderResult {
                 image_data,
                 image_size,
-                render_time,
-                rays_per_second,
+                render_pass_metrics,
             } = self.input.input_buffer_mut();
 
             let len = (self.size.x * self.size.y) as usize;
@@ -140,14 +138,12 @@ impl<R: Renderer> RenderSystem<R> {
 
             let start = Instant::now();
 
-            // TODO: metrics aggregation
-            let metrics = self
-                .renderer
-                .render_pass(&self.camera, &self.scene, &mut acc, &mut rng);
+            let mut metrics =
+                self.renderer
+                    .render_pass(&self.camera, &self.scene, &mut acc, &mut rng);
 
-            let end = start.elapsed();
-            *render_time = end;
-            *rays_per_second = metrics.ray_count as f64 / end.as_secs_f64();
+            metrics.render_time = start.elapsed();
+            *render_pass_metrics = metrics;
 
             for (i, acc_sample) in acc.iter().enumerate() {
                 image_data[i] = (acc_sample / self.samples as f32).to_array();
@@ -166,7 +162,6 @@ impl<R: Renderer> RenderSystem<R> {
                 println!("{i}/{samples_per_pixel}");
             }
 
-            // TODO: metrics aggregation
             let _metrics = self
                 .renderer
                 .render_pass(&self.camera, &self.scene, &mut acc, &mut rng);

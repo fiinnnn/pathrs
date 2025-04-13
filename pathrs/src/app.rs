@@ -1,7 +1,5 @@
 use bevy::{
-    diagnostic::{
-        Diagnostic, DiagnosticPath, Diagnostics, FrameTimeDiagnosticsPlugin, RegisterDiagnostic,
-    },
+    diagnostic::FrameTimeDiagnosticsPlugin,
     prelude::*,
     render::render_resource::{
         Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
@@ -11,15 +9,15 @@ use bevy::{
 use crate::ui::{EguiViewport, init_ui, render_ui};
 use bevy_egui::{EguiContexts, EguiPlugin};
 use crossbeam_channel::Sender;
-use pathrs_renderer::{RenderResult, RenderSystem, RendererCmd, renderer::CPURenderer};
+use pathrs_renderer::{
+    RenderResult, RenderSystem, RendererCmd, metrics::RendererMetrics, renderer::CPURenderer,
+};
 
 pub fn run_bevy_app() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin)
         .add_plugins(EguiPlugin)
-        .register_diagnostic(Diagnostic::new(RENDER_TIME).with_suffix(" ms"))
-        .register_diagnostic(Diagnostic::new(RAYS_PER_SECOND).with_suffix(" R/s"))
         .add_systems(Startup, (init_ui, init_renderer))
         .add_systems(
             Update,
@@ -28,9 +26,6 @@ pub fn run_bevy_app() {
         .run();
 }
 
-pub const RENDER_TIME: DiagnosticPath = DiagnosticPath::const_new("render_time");
-pub const RAYS_PER_SECOND: DiagnosticPath = DiagnosticPath::const_new("rays_per_second");
-
 #[derive(Resource)]
 struct RenderTarget {
     image_handle: Handle<Image>,
@@ -38,9 +33,10 @@ struct RenderTarget {
 }
 
 #[derive(Resource)]
-struct RenderTask {
+pub struct RenderTask {
     cmd_tx: Sender<RendererCmd>,
     output: triple_buffer::Output<RenderResult>,
+    pub metrics: RendererMetrics,
 }
 
 impl Drop for RenderTask {
@@ -98,6 +94,7 @@ fn init_renderer(
     commands.insert_resource(RenderTask {
         cmd_tx,
         output: out,
+        metrics: RendererMetrics::new(256),
     });
 }
 
@@ -129,21 +126,16 @@ fn receive_render(
     render_target: Res<RenderTarget>,
     mut egui_viewport: ResMut<EguiViewport>,
     mut images: ResMut<Assets<Image>>,
-    mut diagnostics: Diagnostics,
 ) {
     let RenderResult {
         image_data,
         image_size,
-        render_time,
-        rays_per_second,
+        render_pass_metrics,
     } = render_task.output.read();
 
     if image_size.x == 0 || image_size.y == 0 {
         return;
     }
-
-    diagnostics.add_measurement(&RENDER_TIME, || render_time.as_millis() as f64);
-    diagnostics.add_measurement(&RAYS_PER_SECOND, || *rays_per_second);
 
     let image = images.get_mut(&render_target.image_handle).unwrap();
 
@@ -161,4 +153,7 @@ fn receive_render(
         .collect();
 
     image.data = image_bytes;
+
+    let metrics = *render_pass_metrics;
+    render_task.metrics.add_pass(metrics);
 }
