@@ -56,7 +56,7 @@ impl<R: Renderer> RenderSystem<R> {
     ) {
         let size = uvec2(width, height);
 
-        let camera = Camera::new(vec3(0.0, 15.0, -2.5), vec3(0.0, 15.0, -5.5), 90.0, size);
+        let camera = Camera::new(vec3(0.0, 15.0, 0.0), vec3(0.0, 15.0, -5.5), 90.0, size);
 
         let mut scene = Scene::default();
         scene::test_scene(&mut scene);
@@ -173,6 +173,7 @@ impl<R: Renderer> RenderSystem<R> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
@@ -184,7 +185,7 @@ impl Ray {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct HitRecord {
     pub pos: Vec3,
     pub normal: Vec3,

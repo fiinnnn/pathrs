@@ -4,8 +4,10 @@ use glam::Vec4;
 use crate::{camera::Camera, metrics::RenderPassMetrics, scene::Scene};
 
 mod cpu_renderer;
+mod cpu_wavefront_renderer;
 
 pub use cpu_renderer::CPURenderer;
+pub use cpu_wavefront_renderer::CPUWavefrontRenderer;
 
 pub trait Renderer: Sync + Send + 'static {
     fn new() -> Self;

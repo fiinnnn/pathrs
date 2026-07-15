@@ -2,9 +2,12 @@ use glam::vec3;
 
 use crate::{
     HitRecord, Ray,
-    geometry::{Sphere, Spheres, SpheresSIMD, Triangle, Triangles, TrianglesSIMD},
+    geometry::{Sphere, Spheres, Triangle, Triangles},
     material::{Dielectric, DiffuseLight, Lambertian, Material, Metal},
 };
+
+#[cfg(feature = "simd")]
+use crate::geometry::{SpheresSIMD, TrianglesSIMD};
 
 #[cfg(feature = "simd")]
 use crate::simd::*;
@@ -60,7 +63,7 @@ impl Scene {
         let r_d = Vec3x8::from(ray.direction);
 
         #[cfg(not(feature = "simd"))]
-        if let Some(hit) = self.spheres.intersect_spheres(ray, tmin, tmax) {
+        if let Some(hit) = self.spheres.intersect(ray, tmin, tmax) {
             tmax = hit.t;
             res = Some(hit);
         }
@@ -151,7 +154,7 @@ pub fn test_scene(scene: &mut Scene) {
     scene.add_sphere(Sphere::new(vec3(-6.0, 8.0, -26.0), 5.0, sphere));
 
     // let sphere_inner = scene.add_material(Dielectric::new(1.00 / 1.50));
-    // scene.add_object(Sphere::new(vec3(-7.0, 9.0, -26.0), 4.0, sphere_inner));
+    // scene.add_sphere(Sphere::new(vec3(-6.0, 8.0, -26.0), 1.0, sphere_inner));
 
     let mirror = scene.add_material(Metal::new(vec3(0.82, 0.82, 0.82), 0.01));
     scene.add_triangles(&Triangle::quad(

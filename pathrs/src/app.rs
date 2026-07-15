@@ -10,7 +10,7 @@ use crate::ui::{EguiViewport, init_ui, render_ui};
 use bevy_egui::{EguiContexts, EguiPlugin};
 use crossbeam_channel::Sender;
 use pathrs_renderer::{
-    RenderResult, RenderSystem, RendererCmd, metrics::RendererMetrics, renderer::CPURenderer,
+    metrics::RendererMetrics, renderer::{CPURenderer, CPUWavefrontRenderer}, RenderResult, RenderSystem, RendererCmd
 };
 
 pub fn run_bevy_app() {
@@ -87,7 +87,7 @@ fn init_renderer(
         size,
     });
 
-    let (renderer, cmd_tx, out) = RenderSystem::<CPURenderer>::new(size.x, size.y);
+    let (renderer, cmd_tx, out) = RenderSystem::<CPUWavefrontRenderer>::new(size.x, size.y);
 
     renderer.start_thread();
 
@@ -103,6 +103,7 @@ fn resize_render_target(
     mut render_target: ResMut<RenderTarget>,
     egui_viewport: Res<EguiViewport>,
     mut last_size: Local<UVec2>,
+    mut testing: Local<UVec2>,
 ) {
     if egui_viewport.size != render_target.size
         && egui_viewport.size == *last_size
@@ -117,6 +118,8 @@ fn resize_render_target(
             height: egui_viewport.size.y,
         });
     }
+
+    *testing = egui_viewport.size;
 
     *last_size = egui_viewport.size;
 }

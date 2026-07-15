@@ -67,6 +67,8 @@ fn trace_ray(
 
     if let Some(hit) = scene.closest_hit(ray, 0.0001, f32::MAX) {
         let mat = scene.materials[hit.material as usize];
+        metrics.add_material_hit(mat.type_idx());
+
         let emitted = mat.emitted(ray, &hit);
 
         let scattered = if let Some((scattered, attenuation)) = mat.scatter(ray, &hit, rng) {

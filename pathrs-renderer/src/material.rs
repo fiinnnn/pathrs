@@ -35,6 +35,16 @@ impl Material {
             Material::DiffuseLight(dl) => dl.emitted(ray, hit),
         }
     }
+
+    #[inline(always)]
+    pub fn type_idx(&self) -> usize {
+        match self {
+            Material::Lambertian(_) => 0,
+            Material::Metal(_) => 1,
+            Material::Dielectric(_) => 2,
+            Material::DiffuseLight(_) => 3,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
